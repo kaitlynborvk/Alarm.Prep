@@ -27,10 +27,40 @@ export default function Home() {
   const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [selectedTime, setSelectedTime] = useState("06:00");
   const [selectedQuestion, setSelectedQuestion] = useState(sampleQuestions[0]);
+  const [selectedDays, setSelectedDays] = useState([true, true, true, true, true, true, true]); // All days selected by default
+  const [selectedQuestionType, setSelectedQuestionType] = useState("general");
+  const [selectedRingtone, setSelectedRingtone] = useState("default");
+
+  const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
+  
+  const questionTypes = [
+    { id: "general", name: "General Knowledge" },
+    { id: "math", name: "Mathematics" },
+    { id: "science", name: "Science" },
+    { id: "history", name: "History" },
+    { id: "geography", name: "Geography" }
+  ];
+
+  const ringtones = [
+    { id: "default", name: "Default" },
+    { id: "gentle", name: "Gentle Wake" },
+    { id: "energetic", name: "Energetic" },
+    { id: "nature", name: "Nature Sounds" },
+    { id: "classical", name: "Classical" }
+  ];
+
+  const handleDayToggle = (index: number) => {
+    const newDays = [...selectedDays];
+    newDays[index] = !newDays[index];
+    setSelectedDays(newDays);
+  };
 
   const handleSetAlarm = () => {
     // In a real app, this would save to a database
     console.log(`Alarm set for ${selectedTime} with question: ${selectedQuestion.question}`);
+    console.log(`Days: ${selectedDays.map((day, index) => day ? daysOfWeek[index] : '').filter(day => day).join(', ')}`);
+    console.log(`Question type: ${selectedQuestionType}`);
+    console.log(`Ringtone: ${selectedRingtone}`);
     setShowAlarmModal(false);
   };
 
@@ -58,7 +88,6 @@ export default function Home() {
 
         {/* Today's Schedule */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Today's Schedule</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div>
@@ -82,9 +111,9 @@ export default function Home() {
         {/* Set Alarm Modal */}
         {showAlarmModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h2 className="text-2xl font-bold mb-4">Set New Alarm</h2>
-              <div className="space-y-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-6">Create New Alarm</h2>
+              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Alarm Time
@@ -93,29 +122,61 @@ export default function Home() {
                     type="time"
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-3 border rounded-lg text-lg"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Question
+                    Days of the Week
+                  </label>
+                  <div className="flex space-x-2">
+                    {selectedDays.map((day, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleDayToggle(index)}
+                        className={`w-10 h-10 rounded-full font-medium ${
+                          day ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                        } hover:bg-blue-100 transition-colors`}
+                      >
+                        {daysOfWeek[index]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Click to unselect days</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Question Type
                   </label>
                   <select
-                    value={selectedQuestion.id}
-                    onChange={(e) => {
-                      const question = sampleQuestions.find(q => q.id === parseInt(e.target.value));
-                      if (question) setSelectedQuestion(question);
-                    }}
-                    className="w-full p-2 border rounded-lg"
+                    value={selectedQuestionType}
+                    onChange={(e) => setSelectedQuestionType(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
                   >
-                    {sampleQuestions.map((q) => (
-                      <option key={q.id} value={q.id}>
-                        {q.question}
+                    {questionTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-end space-x-3 mt-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ringtone
+                  </label>
+                  <select
+                    value={selectedRingtone}
+                    onChange={(e) => setSelectedRingtone(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    {ringtones.map((ringtone) => (
+                      <option key={ringtone.id} value={ringtone.id}>
+                        {ringtone.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
                   <button
                     onClick={() => setShowAlarmModal(false)}
                     className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
@@ -124,9 +185,9 @@ export default function Home() {
                   </button>
                   <button
                     onClick={handleSetAlarm}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    Set Alarm
+                    Create Alarm
                   </button>
                 </div>
               </div>
