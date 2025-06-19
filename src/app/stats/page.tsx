@@ -86,7 +86,66 @@ const sampleStats = {
         }
       }
     },
-    data: { correct: 28, incorrect: 12, total: 40 }
+    data: {
+      overall: { correct: 28, incorrect: 12, total: 40 },
+      categories: {
+        tableAnalysis: {
+          name: "Table Analysis",
+          overall: { correct: 6, incorrect: 2, total: 8 },
+          subcategories: {
+            percentages: { name: "Percentages & Ratios", correct: 2, incorrect: 1, total: 3 },
+            averages: { name: "Averages & Weighted Calculations", correct: 2, incorrect: 0, total: 2 },
+            logical: { name: "Logical Reasoning", correct: 1, incorrect: 1, total: 2 },
+            reading: { name: "Reading Comprehension", correct: 1, incorrect: 0, total: 1 }
+          }
+        },
+        graphicsInterpretation: {
+          name: "Graphics Interpretation",
+          overall: { correct: 7, incorrect: 3, total: 10 },
+          subcategories: {
+            trend: { name: "Trend Identification", correct: 3, incorrect: 1, total: 4 },
+            percentages: { name: "Percentages & Ratios", correct: 2, incorrect: 1, total: 3 },
+            critical: { name: "Critical Thinking", correct: 2, incorrect: 1, total: 3 }
+          }
+        },
+        twoPartAnalysis: {
+          name: "Two-Part Analysis",
+          overall: { correct: 5, incorrect: 3, total: 8 },
+          subcategories: {
+            conditional: { name: "Conditional Reasoning", correct: 2, incorrect: 1, total: 3 },
+            multiStep: { name: "Multi-Step Arithmetic", correct: 2, incorrect: 1, total: 3 },
+            logical: { name: "Logical Reasoning", correct: 1, incorrect: 1, total: 2 }
+          }
+        },
+        multiSourceReasoning: {
+          name: "Multi-Source Reasoning",
+          overall: { correct: 6, incorrect: 2, total: 8 },
+          subcategories: {
+            reading: { name: "Reading Comprehension", correct: 2, incorrect: 1, total: 3 },
+            verbal: { name: "Verbal Inference from Data", correct: 2, incorrect: 0, total: 2 },
+            critical: { name: "Critical Thinking", correct: 1, incorrect: 1, total: 2 },
+            logical: { name: "Logical Reasoning", correct: 1, incorrect: 0, total: 1 }
+          }
+        },
+        dataSufficiency: {
+          name: "Data Sufficiency (non-quantitative)",
+          overall: { correct: 4, incorrect: 2, total: 6 },
+          subcategories: {
+            logical: { name: "Logical Reasoning", correct: 2, incorrect: 1, total: 3 },
+            critical: { name: "Critical Thinking", correct: 1, incorrect: 1, total: 2 },
+            conditional: { name: "Conditional Reasoning", correct: 1, incorrect: 0, total: 1 }
+          }
+        }
+      },
+      dataSources: {
+        table: { name: "Table", correct: 8, incorrect: 3, total: 11 },
+        chart: { name: "Chart", correct: 6, incorrect: 2, total: 8 },
+        barGraph: { name: "Bar Graph", correct: 5, incorrect: 2, total: 7 },
+        lineGraph: { name: "Line Graph", correct: 4, incorrect: 2, total: 6 },
+        mixedGraph: { name: "Mixed Graph", correct: 3, incorrect: 2, total: 5 },
+        textPassage: { name: "Text Passage", correct: 2, incorrect: 1, total: 3 }
+      }
+    }
   },
   lsat: {
     reading: { correct: 52, incorrect: 18, total: 70 },
@@ -331,6 +390,102 @@ export default function StatsPage() {
     );
   };
 
+  const renderDataBreakdown = () => {
+    const dataInsights = sampleStats.gmat.data;
+    
+    return (
+      <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => setSelectedSection(null)}
+            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Overview
+          </button>
+        </div>
+
+        {/* Overall Data Insights Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h3 className="text-lg font-semibold mb-3">Overall Data Insights</h3>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">
+              {dataInsights.overall.correct}/{dataInsights.overall.total} correct
+            </span>
+            <span className={`font-semibold ${getPerformanceColor((dataInsights.overall.correct / dataInsights.overall.total) * 100)}`}>
+              {Math.round((dataInsights.overall.correct / dataInsights.overall.total) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full" 
+              style={{ width: `${(dataInsights.overall.correct / dataInsights.overall.total) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Question Format Categories */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h4 className="font-semibold text-gray-800 mb-4">Question Format Categories</h4>
+          <div className="space-y-3">
+            {Object.entries(dataInsights.categories).map(([key, category]) => (
+              <div key={key} className="pl-4 border-l-2 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{category.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {category.overall.correct}/{category.overall.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((category.overall.correct / category.overall.total) * 100)}`}>
+                      {Math.round((category.overall.correct / category.overall.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-blue-400 h-1 rounded-full" 
+                    style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Data Source Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h4 className="font-semibold text-gray-800 mb-4">Data Source Performance</h4>
+          <div className="space-y-3">
+            {Object.entries(dataInsights.dataSources).map(([key, dataSource]) => (
+              <div key={key} className="pl-4 border-l-2 border-green-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{dataSource.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {dataSource.correct}/{dataSource.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((dataSource.correct / dataSource.total) * 100)}`}>
+                      {Math.round((dataSource.correct / dataSource.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-green-400 h-1 rounded-full" 
+                    style={{ width: `${(dataSource.correct / dataSource.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSectionStats = (section: string, data: any, isClickable: boolean = false) => {
     const percentage = Math.round((data.correct / data.total) * 100);
     
@@ -375,7 +530,7 @@ export default function StatsPage() {
       <div className="space-y-6">
         {renderSectionStats('quantitative', stats.quantitative.overall, true)}
         {renderSectionStats('verbal', stats.verbal.overall, true)}
-        {renderSectionStats('data', stats.data)}
+        {renderSectionStats('data', stats.data.overall, true)}
       </div>
     );
   };
@@ -421,6 +576,8 @@ export default function StatsPage() {
             renderQuantitativeBreakdown()
           ) : selectedSection === 'verbal' ? (
             renderVerbalBreakdown()
+          ) : selectedSection === 'data' ? (
+            renderDataBreakdown()
           ) : (
             examType === 'gmat' ? renderGMATStats() : renderLSATStats()
           )}
