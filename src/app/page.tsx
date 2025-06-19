@@ -33,6 +33,7 @@ export default function Home() {
   const [selectedRingtone, setSelectedRingtone] = useState("default");
   const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
   const [selectedDifficulty, setSelectedDifficulty] = useState("easy"); // Track difficulty selection
+  const [userAlarms, setUserAlarms] = useState<any[]>([]); // Store user's created alarms
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
   
@@ -77,13 +78,40 @@ export default function Home() {
     setSelectedDays(newDays);
   };
 
+  const handleAlarmToggle = (alarmId: number) => {
+    setUserAlarms(prevAlarms => 
+      prevAlarms.map(alarm => 
+        alarm.id === alarmId 
+          ? { ...alarm, isActive: !alarm.isActive }
+          : alarm
+      )
+    );
+  };
+
   const handleSetAlarm = () => {
+    // Create new alarm object
+    const newAlarm = {
+      id: Date.now(), // Simple ID generation
+      time: selectedTime,
+      days: selectedDays,
+      questionType: selectedQuestionType,
+      difficulty: selectedDifficulty,
+      ringtone: selectedRingtone,
+      examType: examType,
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+
+    // Add to user alarms
+    setUserAlarms(prevAlarms => [...prevAlarms, newAlarm]);
+
     // In a real app, this would save to a database
-    console.log(`Alarm set for ${selectedTime} with question: ${selectedQuestion.question}`);
+    console.log('New alarm created:', newAlarm);
+    console.log(`Alarm set for ${selectedTime} with question type: ${selectedQuestionType}`);
     console.log(`Days: ${selectedDays.map((day, index) => day ? daysOfWeek[index] : '').filter(day => day).join(', ')}`);
-    console.log(`Question type: ${selectedQuestionType}`);
     console.log(`Difficulty: ${selectedDifficulty}`);
     console.log(`Ringtone: ${selectedRingtone}`);
+    
     setShowAlarmModal(false);
   };
 
@@ -119,25 +147,58 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Today's Schedule */}
+        {/* User's Alarms */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <h3 className="font-medium">Morning Quiz Alarm</h3>
-                <p className="text-gray-600">6:00 AM</p>
-                <p className="text-sm text-gray-500">Question: {sampleQuestions[0].question}</p>
+            {userAlarms.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No alarms created yet</p>
+                <p className="text-sm">Create your first alarm to get started!</p>
               </div>
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <h3 className="font-medium">Evening Quiz Alarm</h3>
-                <p className="text-gray-600">10:00 PM</p>
-                <p className="text-sm text-gray-500">Question: {sampleQuestions[1].question}</p>
-              </div>
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
-            </div>
+            ) : (
+              userAlarms.map((alarm) => (
+                <div key={alarm.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {alarm.time}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {parseInt(alarm.time.split(':')[0]) >= 12 ? 'PM' : 'AM'}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{alarm.examType} {alarm.questionType}</h3>
+                        <p className="text-sm text-gray-500 mb-1">
+                          Difficulty: {alarm.difficulty.charAt(0).toUpperCase() + alarm.difficulty.slice(1)}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Days: {alarm.days.map((day: boolean, index: number) => day ? daysOfWeek[index] : '').filter((day: string) => day).join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => handleAlarmToggle(alarm.id)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        alarm.isActive ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          alarm.isActive ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {alarm.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
