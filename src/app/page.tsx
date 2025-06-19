@@ -34,6 +34,8 @@ export default function Home() {
   const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
   const [selectedDifficulty, setSelectedDifficulty] = useState("easy"); // Track difficulty selection
   const [userAlarms, setUserAlarms] = useState<any[]>([]); // Store user's created alarms
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Show delete confirmation modal
+  const [alarmToDelete, setAlarmToDelete] = useState<number | null>(null); // Track which alarm to delete
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
   
@@ -86,6 +88,24 @@ export default function Home() {
           : alarm
       )
     );
+  };
+
+  const handleDeleteClick = (alarmId: number) => {
+    setAlarmToDelete(alarmId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (alarmToDelete) {
+      setUserAlarms(prevAlarms => prevAlarms.filter(alarm => alarm.id !== alarmToDelete));
+      setShowDeleteModal(false);
+      setAlarmToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setAlarmToDelete(null);
   };
 
   const handleSetAlarm = () => {
@@ -157,8 +177,8 @@ export default function Home() {
               </div>
             ) : (
               userAlarms.map((alarm) => (
-                <div key={alarm.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
+                <div key={alarm.id} className="relative p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-gray-900">
@@ -178,23 +198,34 @@ export default function Home() {
                         </p>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => handleAlarmToggle(alarm.id)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        alarm.isActive ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          alarm.isActive ? 'translate-x-6' : 'translate-x-1'
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => handleAlarmToggle(alarm.id)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          alarm.isActive ? 'bg-blue-600' : 'bg-gray-200'
                         }`}
-                      />
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            alarm.isActive ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className="ml-2 text-xs text-gray-500">
+                        {alarm.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-2 right-2">
+                    <button
+                      onClick={() => handleDeleteClick(alarm.id)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete alarm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
-                    <span className="ml-2 text-xs text-gray-500">
-                      {alarm.isActive ? 'Active' : 'Inactive'}
-                    </span>
                   </div>
                 </div>
               ))
@@ -220,6 +251,30 @@ export default function Home() {
                   className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-lg font-medium"
                 >
                   LSAT
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full text-center">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Delete Alarm</h2>
+              <p className="text-gray-600 mb-6">Are you sure you want to delete this alarm?</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleCancelDelete}
+                  className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Delete
                 </button>
               </div>
             </div>

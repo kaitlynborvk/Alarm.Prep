@@ -1,118 +1,112 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BottomNav from '@/components/BottomNav';
 
-const testTypes = [
-  {
-    id: 'lsat',
-    name: 'LSAT',
-    description: 'Logical Reasoning, Analytical Reasoning, and Reading Comprehension questions',
-    categories: ['Logical Reasoning', 'Analytical Reasoning', 'Reading Comprehension']
-  },
-  {
-    id: 'gmat',
-    name: 'GMAT',
-    description: 'Quantitative, Verbal, and Integrated Reasoning questions',
-    categories: ['Quantitative', 'Verbal', 'Integrated Reasoning']
-  },
-  {
-    id: 'gre',
-    name: 'GRE',
-    description: 'Verbal Reasoning, Quantitative Reasoning, and Analytical Writing questions',
-    categories: ['Verbal Reasoning', 'Quantitative Reasoning', 'Analytical Writing']
-  }
-];
-
 export default function Settings() {
-  const [selectedTest, setSelectedTest] = useState<string>('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [currentExamType, setCurrentExamType] = useState<"GMAT" | "LSAT" | null>(null);
 
-  // Temporary user data - will be replaced with actual user data later
-  const userData = {
-    name: "John Doe",
-    subscription: "Free Trial"
-  };
+  // Load current exam type from localStorage
+  useEffect(() => {
+    const storedExamType = localStorage.getItem('examType');
+    if (storedExamType) {
+      setCurrentExamType(storedExamType as "GMAT" | "LSAT");
+    }
+  }, []);
 
-  const handleTestChange = (testId: string) => {
-    setSelectedTest(testId);
-    // Reset categories when test changes
-    setSelectedCategories([]);
-  };
-
-  const handleCategoryToggle = (category: string) => {
-    setSelectedCategories(prev => {
-      if (prev.includes(category)) {
-        return prev.filter(c => c !== category);
-      } else {
-        return [...prev, category];
-      }
-    });
-  };
-
-  const handleSave = () => {
-    // In a real app, this would save to a database
-    console.log('Selected Test:', selectedTest);
-    console.log('Selected Categories:', selectedCategories);
-    // Show success message or redirect
+  const handleExamSwitch = (newExamType: "GMAT" | "LSAT") => {
+    setCurrentExamType(newExamType);
+    localStorage.setItem('examType', newExamType);
+    // In a real app, this would also update the database
+    console.log(`Switched to ${newExamType}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       <main className="container mx-auto px-4 py-8">
-        {/* User Profile Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{userData.name}</h1>
-          <p className="text-sm text-gray-600 mt-1">{userData.subscription}</p>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+          <p className="text-gray-600">Manage your alarm preferences</p>
         </div>
 
-        {/* Test Type Selection */}
+        {/* Exam Type Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Select Question Type</h2>
-          <div className="mb-6">
-            <select
-              value={selectedTest}
-              onChange={(e) => handleTestChange(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a test type</option>
-              {testTypes.map((test) => (
-                <option key={test.id} value={test.id}>
-                  {test.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Exam Type</h2>
+          <p className="text-gray-600 mb-6">Switch between GMAT and LSAT question types</p>
           
-          {/* Categories */}
-          {selectedTest && (
-            <div className="mt-6">
-              <h3 className="text-lg font-medium mb-3">Select Categories</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {testTypes.find(t => t.id === selectedTest)?.categories.map((category) => (
-                  <label key={category} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(category)}
-                      onChange={() => handleCategoryToggle(category)}
-                      className="h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-gray-700">{category}</span>
-                  </label>
-                ))}
-              </div>
+          <div className="space-y-4">
+            <div className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+              currentExamType === "GMAT" 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <button
+                onClick={() => handleExamSwitch("GMAT")}
+                className="w-full text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">GMAT</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Quantitative Reasoning, Verbal Reasoning, Data Insights
+                    </p>
+                  </div>
+                  {currentExamType === "GMAT" && (
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            <div className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+              currentExamType === "LSAT" 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <button
+                onClick={() => handleExamSwitch("LSAT")}
+                className="w-full text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">LSAT</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Reading Comprehension, Logical Reasoning
+                    </p>
+                  </div>
+                  {currentExamType === "LSAT" && (
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {currentExamType && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 text-sm">
+                Currently selected: <span className="font-semibold">{currentExamType}</span>
+              </p>
+              <p className="text-green-700 text-xs mt-1">
+                This will affect the question types available when creating new alarms.
+              </p>
             </div>
           )}
         </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Save Settings
-          </button>
+        {/* Additional Settings Placeholder */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Additional Settings</h2>
+          <p className="text-gray-600">More settings coming soon...</p>
         </div>
       </main>
       <BottomNav />
