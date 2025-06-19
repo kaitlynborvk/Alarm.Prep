@@ -32,6 +32,7 @@ export default function Home() {
   const [selectedQuestionType, setSelectedQuestionType] = useState("quantitative");
   const [selectedRingtone, setSelectedRingtone] = useState("default");
   const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
+  const [selectedDifficulty, setSelectedDifficulty] = useState("easy"); // Track difficulty selection
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
   
@@ -56,6 +57,12 @@ export default function Home() {
     { id: "classical", name: "Classical" }
   ];
 
+  const difficulties = [
+    { id: "easy", name: "Easy" },
+    { id: "intermediate", name: "Intermediate" },
+    { id: "hard", name: "Hard" }
+  ];
+
   const handleExamSelection = (exam: "GMAT" | "LSAT") => {
     setExamType(exam);
     setSelectedQuestionType(exam === "GMAT" ? "quantitative" : "reading");
@@ -75,6 +82,7 @@ export default function Home() {
     console.log(`Alarm set for ${selectedTime} with question: ${selectedQuestion.question}`);
     console.log(`Days: ${selectedDays.map((day, index) => day ? daysOfWeek[index] : '').filter(day => day).join(', ')}`);
     console.log(`Question type: ${selectedQuestionType}`);
+    console.log(`Difficulty: ${selectedDifficulty}`);
     console.log(`Ringtone: ${selectedRingtone}`);
     setShowAlarmModal(false);
   };
@@ -208,6 +216,26 @@ export default function Home() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Difficulty Level
+                  </label>
+                  <div className="flex space-x-2">
+                    {difficulties.map((difficulty) => (
+                      <button
+                        key={difficulty.id}
+                        onClick={() => setSelectedDifficulty(difficulty.id)}
+                        className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                          selectedDifficulty === difficulty.id
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {difficulty.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
