@@ -236,6 +236,7 @@ export default function StatsPage() {
 
   const renderVerbalBreakdown = () => {
     const verbalData = sampleStats.gmat.verbal;
+    const readingComp = verbalData.categories.readingComprehension;
     
     return (
       <div className="space-y-6">
@@ -271,90 +272,60 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* Reading Comprehension Category - Always Expanded */}
-        <div className="space-y-4">
-          {Object.entries(verbalData.categories).map(([key, category]) => (
-            <div key={key} className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-gray-800">{category.name}</h4>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    {category.overall.correct}/{category.overall.total}
-                  </span>
-                  <span className={`text-sm font-semibold ${getPerformanceColor((category.overall.correct / category.overall.total) * 100)}`}>
-                    {Math.round((category.overall.correct / category.overall.total) * 100)}%
-                  </span>
-                </div>
-              </div>
-              
-              {/* Category Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full" 
-                  style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
-                ></div>
-              </div>
-
-              {/* Subcategories - Always Visible */}
-              <div className="mt-4 space-y-4">
-                {/* Skill-Based Subcategories */}
-                <div>
-                  <h5 className="font-medium text-gray-700 mb-3">Skill-Based Subcategories</h5>
-                  <div className="space-y-3">
-                    {Object.entries(category.subcategories).map(([subKey, subcategory]) => (
-                      <div key={subKey} className="pl-4 border-l-2 border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">{subcategory.name}</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">
-                              {subcategory.correct}/{subcategory.total}
-                            </span>
-                            <span className={`text-xs font-semibold ${getPerformanceColor((subcategory.correct / subcategory.total) * 100)}`}>
-                              {Math.round((subcategory.correct / subcategory.total) * 100)}%
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
-                          <div 
-                            className="bg-blue-400 h-1 rounded-full" 
-                            style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
+        {/* Skill-Based Subcategories */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h4 className="font-semibold text-gray-800 mb-4">Skill-Based Subcategories</h4>
+          <div className="space-y-3">
+            {Object.entries(readingComp.subcategories).map(([subKey, subcategory]) => (
+              <div key={subKey} className="pl-4 border-l-2 border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{subcategory.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {subcategory.correct}/{subcategory.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((subcategory.correct / subcategory.total) * 100)}`}>
+                      {Math.round((subcategory.correct / subcategory.total) * 100)}%
+                    </span>
                   </div>
                 </div>
-
-                {/* Passage Type Tags */}
-                <div>
-                  <h5 className="font-medium text-gray-700 mb-3">Passage Type Performance</h5>
-                  <div className="space-y-3">
-                    {Object.entries(category.passageTypes).map(([typeKey, passageType]) => (
-                      <div key={typeKey} className="pl-4 border-l-2 border-green-200">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">{passageType.name}</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">
-                              {passageType.correct}/{passageType.total}
-                            </span>
-                            <span className={`text-xs font-semibold ${getPerformanceColor((passageType.correct / passageType.total) * 100)}`}>
-                              {Math.round((passageType.correct / passageType.total) * 100)}%
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
-                          <div 
-                            className="bg-green-400 h-1 rounded-full" 
-                            style={{ width: `${(passageType.correct / passageType.total) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-blue-400 h-1 rounded-full" 
+                    style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
+                  ></div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+
+        {/* Passage Type Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h4 className="font-semibold text-gray-800 mb-4">Passage Type Performance</h4>
+          <div className="space-y-3">
+            {Object.entries(readingComp.passageTypes).map(([typeKey, passageType]) => (
+              <div key={typeKey} className="pl-4 border-l-2 border-green-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{passageType.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {passageType.correct}/{passageType.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((passageType.correct / passageType.total) * 100)}`}>
+                      {Math.round((passageType.correct / passageType.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-green-400 h-1 rounded-full" 
+                    style={{ width: `${(passageType.correct / passageType.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
