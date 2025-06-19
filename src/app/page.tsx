@@ -40,7 +40,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Alarm Prep</h1>
-          <p className="text-lg text-gray-600">Wake up smarter with quiz alarms</p>
+          <p className="text-lg text-gray-600">Start your day preparing for your future!</p>
         </div>
 
         {/* Alarms Tab and Create Icon */}
