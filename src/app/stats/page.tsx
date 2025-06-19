@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import BottomNav from '@/components/BottomNav';
 
 // Sample data - in a real app, this would come from a database
@@ -68,19 +68,26 @@ const sampleStats = {
   }
 };
 
-export default function Stats() {
-  const [examType, setExamType] = useState<'gmat' | 'lsat'>('gmat');
-  const [selectedSection, setSelectedSection] = useState<string>('overview');
+export default function StatsPage() {
+  const [examType, setExamType] = useState<'gmat' | 'lsat' | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedExamType = localStorage.getItem('examType') as 'gmat' | 'lsat';
+    const savedExamType = localStorage.getItem('examType');
+    
     if (savedExamType) {
-      setExamType(savedExamType);
+      // Handle both uppercase and lowercase formats
+      const normalizedExamType = savedExamType.toLowerCase() as 'gmat' | 'lsat';
+      setExamType(normalizedExamType);
+    } else {
+      // Default to GMAT if nothing is set
+      setExamType('gmat');
     }
   }, []);
 
   const getStats = () => {
+    if (!examType) return null;
     return examType === 'gmat' ? sampleStats.gmat : sampleStats.lsat;
   };
 
@@ -101,6 +108,19 @@ export default function Stats() {
     
     return (
       <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => setSelectedSection(null)}
+            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Overview
+          </button>
+        </div>
+
         {/* Overall Quant Performance */}
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <h3 className="text-lg font-semibold mb-3">Overall Quantitative</h3>
@@ -188,12 +208,22 @@ export default function Stats() {
     );
   };
 
-  const renderSectionStats = (section: string, data: any) => {
+  const renderSectionStats = (section: string, data: any, isClickable: boolean = false) => {
     const percentage = Math.round((data.correct / data.total) * 100);
     
     return (
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="text-lg font-semibold mb-3 capitalize">{section}</h3>
+      <div 
+        className={`bg-white rounded-lg p-4 shadow-sm ${isClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+        onClick={isClickable ? () => setSelectedSection(section) : undefined}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold capitalize">{section}</h3>
+          {isClickable && (
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          )}
+        </div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-600">
             {data.correct}/{data.total} correct
@@ -215,100 +245,60 @@ export default function Stats() {
     );
   };
 
-  const renderOverview = () => {
-    const stats = getStats();
+  const renderGMATStats = () => {
+    const stats = sampleStats.gmat;
     
     return (
       <div className="space-y-6">
-        {examType === 'gmat' ? (
-          <>
-            {renderSectionStats('quantitative', (stats as any).quantitative.overall)}
-            {renderSectionStats('verbal', (stats as any).verbal)}
-            {renderSectionStats('data', (stats as any).data)}
-          </>
-        ) : (
-          <>
-            {renderSectionStats('reading', (stats as any).reading)}
-            {renderSectionStats('logical', (stats as any).logical)}
-          </>
-        )}
+        {renderSectionStats('quantitative', stats.quantitative.overall, true)}
+        {renderSectionStats('verbal', stats.verbal)}
+        {renderSectionStats('data', stats.data)}
       </div>
     );
   };
 
+  const renderLSATStats = () => {
+    const stats = sampleStats.lsat;
+    
+    return (
+      <div className="space-y-6">
+        {renderSectionStats('reading', stats.reading)}
+        {renderSectionStats('logical', stats.logical)}
+      </div>
+    );
+  };
+
+  if (!examType) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="max-w-md mx-auto p-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Performance Stats</h1>
+          <div className="bg-white rounded-lg p-8 text-center shadow-sm">
+            <p className="text-gray-600 mb-4">No exam type selected</p>
+            <p className="text-sm text-gray-500">
+              Go to Settings to select GMAT or LSAT to view your statistics
+            </p>
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-md mx-auto p-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Performance Stats</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">
+          {examType.toUpperCase()} Performance Stats
+        </h1>
         
-        {/* Exam Type Toggle */}
-        <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => {
-                setExamType('gmat');
-                localStorage.setItem('examType', 'gmat');
-                setSelectedSection('overview');
-                setSelectedCategory(null);
-              }}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                examType === 'gmat'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              GMAT
-            </button>
-            <button
-              onClick={() => {
-                setExamType('lsat');
-                localStorage.setItem('examType', 'lsat');
-                setSelectedSection('overview');
-                setSelectedCategory(null);
-              }}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                examType === 'lsat'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              LSAT
-            </button>
-          </div>
-        </div>
-
-        {/* Section Tabs */}
-        <div className="bg-white rounded-lg p-1 shadow-sm mb-6">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setSelectedSection('overview')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                selectedSection === 'overview'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              Overview
-            </button>
-            {examType === 'gmat' && (
-              <button
-                onClick={() => setSelectedSection('quantitative')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  selectedSection === 'quantitative'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Quant Breakdown
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* Stats Content */}
         <div className="space-y-4">
-          {selectedSection === 'overview' && renderOverview()}
-          {selectedSection === 'quantitative' && examType === 'gmat' && renderQuantitativeBreakdown()}
+          {selectedSection === 'quantitative' ? (
+            renderQuantitativeBreakdown()
+          ) : (
+            examType === 'gmat' ? renderGMATStats() : renderLSATStats()
+          )}
         </div>
       </div>
       
