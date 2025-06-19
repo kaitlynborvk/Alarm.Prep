@@ -43,16 +43,16 @@ export default function Home() {
           <p className="text-lg text-gray-600">Wake up smarter with quiz alarms</p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+        {/* Alarms Tab and Create Icon */}
+        <div className="text-center mb-12">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-3">Alarms</h2>
           <button 
             onClick={() => setShowAlarmModal(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-16 h-16 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto"
           >
-            Set New Alarm
-          </button>
-          <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors">
-            View Schedule
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
           </button>
         </div>
 
