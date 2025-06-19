@@ -29,7 +29,7 @@ export default function Home() {
   const [selectedTime, setSelectedTime] = useState("06:00");
   const [selectedQuestion, setSelectedQuestion] = useState(sampleQuestions[0]);
   const [selectedDays, setSelectedDays] = useState([true, true, true, true, true, true, true]); // All days selected by default
-  const [selectedQuestionType, setSelectedQuestionType] = useState("quantitative");
+  const [selectedQuestionType, setSelectedQuestionType] = useState("");
   const [selectedRingtone, setSelectedRingtone] = useState("default");
   const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
   const [selectedDifficulty, setSelectedDifficulty] = useState("easy"); // Track difficulty selection
@@ -158,7 +158,10 @@ export default function Home() {
         <div className="text-center mb-12">
           <h2 className="text-2xl font-semibold text-gray-900 mb-3">Alarms</h2>
           <button 
-            onClick={() => setShowAlarmModal(true)}
+            onClick={() => {
+              setShowAlarmModal(true);
+              setSelectedQuestionType("");
+            }}
             className="w-16 h-16 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -322,12 +325,13 @@ export default function Home() {
                     {examType} Question Type
                   </label>
                   <select
-                    value={selectedQuestionType}
+                    value={selectedQuestionType || ''}
                     onChange={(e) => setSelectedQuestionType(e.target.value)}
-                    className="w-full p-3 border rounded-lg"
+                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 appearance-none"
                   >
+                    <option value="" disabled>Select question type</option>
                     {questionTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
+                      <option key={type.id} value={type.id} className="text-gray-900 bg-white">
                         {type.name}
                       </option>
                     ))}
@@ -360,10 +364,10 @@ export default function Home() {
                   <select
                     value={selectedRingtone}
                     onChange={(e) => setSelectedRingtone(e.target.value)}
-                    className="w-full p-3 border rounded-lg"
+                    className="w-full p-3 border rounded-lg bg-gray-100 text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 appearance-none"
                   >
                     {ringtones.map((ringtone) => (
-                      <option key={ringtone.id} value={ringtone.id}>
+                      <option key={ringtone.id} value={ringtone.id} className="text-gray-900 bg-white">
                         {ringtone.name}
                       </option>
                     ))}
