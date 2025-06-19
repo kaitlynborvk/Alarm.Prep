@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
 
@@ -25,21 +25,28 @@ const sampleQuestions = [
 
 export default function Home() {
   const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(true); // Show onboarding on first visit
   const [selectedTime, setSelectedTime] = useState("06:00");
   const [selectedQuestion, setSelectedQuestion] = useState(sampleQuestions[0]);
   const [selectedDays, setSelectedDays] = useState([true, true, true, true, true, true, true]); // All days selected by default
-  const [selectedQuestionType, setSelectedQuestionType] = useState("general");
+  const [selectedQuestionType, setSelectedQuestionType] = useState("quantitative");
   const [selectedRingtone, setSelectedRingtone] = useState("default");
+  const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
   
-  const questionTypes = [
-    { id: "general", name: "General Knowledge" },
-    { id: "math", name: "Mathematics" },
-    { id: "science", name: "Science" },
-    { id: "history", name: "History" },
-    { id: "geography", name: "Geography" }
+  const gmatQuestionTypes = [
+    { id: "quantitative", name: "Quantitative Reasoning" },
+    { id: "verbal", name: "Verbal Reasoning" },
+    { id: "data", name: "Data Insights" }
   ];
+
+  const lsatQuestionTypes = [
+    { id: "reading", name: "Reading Comprehension" },
+    { id: "logical", name: "Logical Reasoning" }
+  ];
+
+  const questionTypes = examType === "GMAT" ? gmatQuestionTypes : lsatQuestionTypes;
 
   const ringtones = [
     { id: "default", name: "Default" },
@@ -48,6 +55,14 @@ export default function Home() {
     { id: "nature", name: "Nature Sounds" },
     { id: "classical", name: "Classical" }
   ];
+
+  const handleExamSelection = (exam: "GMAT" | "LSAT") => {
+    setExamType(exam);
+    setSelectedQuestionType(exam === "GMAT" ? "quantitative" : "reading");
+    setShowOnboardingModal(false);
+    // In a real app, this would be saved to localStorage or a database
+    localStorage.setItem('examType', exam);
+  };
 
   const handleDayToggle = (index: number) => {
     const newDays = [...selectedDays];
@@ -63,6 +78,16 @@ export default function Home() {
     console.log(`Ringtone: ${selectedRingtone}`);
     setShowAlarmModal(false);
   };
+
+  useEffect(() => {
+    // Check localStorage for existing exam selection
+    // const storedExamType = localStorage.getItem('examType');
+    // if (storedExamType) {
+    //   setExamType(storedExamType as "GMAT" | "LSAT");
+    //   setSelectedQuestionType(storedExamType === "GMAT" ? "quantitative" : "reading");
+    //   setShowOnboardingModal(false);
+    // }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -108,6 +133,30 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Onboarding Modal */}
+        {showOnboardingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Alarm Prep!</h2>
+              <p className="text-lg text-gray-600 mb-8">Which exam are you studying for?</p>
+              <div className="space-y-4">
+                <button
+                  onClick={() => handleExamSelection("GMAT")}
+                  className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium"
+                >
+                  GMAT
+                </button>
+                <button
+                  onClick={() => handleExamSelection("LSAT")}
+                  className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-lg font-medium"
+                >
+                  LSAT
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Set Alarm Modal */}
         {showAlarmModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -146,7 +195,7 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Question Type
+                    {examType} Question Type
                   </label>
                   <select
                     value={selectedQuestionType}
