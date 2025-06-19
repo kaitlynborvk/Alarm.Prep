@@ -59,7 +59,33 @@ const sampleStats = {
         }
       }
     },
-    verbal: { correct: 38, incorrect: 22, total: 60 },
+    verbal: {
+      overall: { correct: 38, incorrect: 22, total: 60 },
+      categories: {
+        readingComprehension: {
+          name: "Reading Comprehension",
+          overall: { correct: 38, incorrect: 22, total: 60 },
+          subcategories: {
+            mainIdea: { name: "Main Idea", correct: 6, incorrect: 2, total: 8 },
+            primaryPurpose: { name: "Primary Purpose", correct: 5, incorrect: 3, total: 8 },
+            inference: { name: "Inference", correct: 7, incorrect: 4, total: 11 },
+            detail: { name: "Detail", correct: 8, incorrect: 3, total: 11 },
+            function: { name: "Function/Purpose of Sentence or Paragraph", correct: 4, incorrect: 2, total: 6 },
+            strengthenWeaken: { name: "Strengthen/Weaken", correct: 3, incorrect: 3, total: 6 },
+            tone: { name: "Author's Tone or Attitude", correct: 2, incorrect: 2, total: 4 },
+            logicalStructure: { name: "Logical Structure or Flow", correct: 2, incorrect: 2, total: 4 },
+            evaluate: { name: "Evaluate or Resolve Discrepancy", correct: 1, incorrect: 1, total: 2 }
+          },
+          passageTypes: {
+            business: { name: "Business/Economy", correct: 12, incorrect: 6, total: 18 },
+            science: { name: "Science/Technology", correct: 10, incorrect: 5, total: 15 },
+            history: { name: "History/Social Sciences", correct: 8, incorrect: 4, total: 12 },
+            law: { name: "Law/Politics", correct: 5, incorrect: 4, total: 9 },
+            humanities: { name: "Humanities/Philosophy", correct: 3, incorrect: 3, total: 6 }
+          }
+        }
+      }
+    },
     data: { correct: 28, incorrect: 12, total: 40 }
   },
   lsat: {
@@ -208,6 +234,145 @@ export default function StatsPage() {
     );
   };
 
+  const renderVerbalBreakdown = () => {
+    const verbalData = sampleStats.gmat.verbal;
+    
+    return (
+      <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => setSelectedSection(null)}
+            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Overview
+          </button>
+        </div>
+
+        {/* Overall Verbal Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h3 className="text-lg font-semibold mb-3">Overall Verbal</h3>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">
+              {verbalData.overall.correct}/{verbalData.overall.total} correct
+            </span>
+            <span className={`font-semibold ${getPerformanceColor((verbalData.overall.correct / verbalData.overall.total) * 100)}`}>
+              {Math.round((verbalData.overall.correct / verbalData.overall.total) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full" 
+              style={{ width: `${(verbalData.overall.correct / verbalData.overall.total) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Reading Comprehension Category */}
+        <div className="space-y-4">
+          {Object.entries(verbalData.categories).map(([key, category]) => (
+            <div key={key} className="bg-white rounded-lg p-4 shadow-sm">
+              <div 
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}
+              >
+                <h4 className="font-semibold text-gray-800">{category.name}</h4>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    {category.overall.correct}/{category.overall.total}
+                  </span>
+                  <span className={`text-sm font-semibold ${getPerformanceColor((category.overall.correct / category.overall.total) * 100)}`}>
+                    {Math.round((category.overall.correct / category.overall.total) * 100)}%
+                  </span>
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${selectedCategory === key ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              
+              {/* Category Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full" 
+                  style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
+                ></div>
+              </div>
+
+              {/* Subcategories */}
+              {selectedCategory === key && (
+                <div className="mt-4 space-y-4">
+                  {/* Skill-Based Subcategories */}
+                  <div>
+                    <h5 className="font-medium text-gray-700 mb-3">Skill-Based Subcategories</h5>
+                    <div className="space-y-3">
+                      {Object.entries(category.subcategories).map(([subKey, subcategory]) => (
+                        <div key={subKey} className="pl-4 border-l-2 border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">{subcategory.name}</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">
+                                {subcategory.correct}/{subcategory.total}
+                              </span>
+                              <span className={`text-xs font-semibold ${getPerformanceColor((subcategory.correct / subcategory.total) * 100)}`}>
+                                {Math.round((subcategory.correct / subcategory.total) * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                            <div 
+                              className="bg-blue-400 h-1 rounded-full" 
+                              style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Passage Type Tags */}
+                  <div>
+                    <h5 className="font-medium text-gray-700 mb-3">Passage Type Performance</h5>
+                    <div className="space-y-3">
+                      {Object.entries(category.passageTypes).map(([typeKey, passageType]) => (
+                        <div key={typeKey} className="pl-4 border-l-2 border-green-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">{passageType.name}</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">
+                                {passageType.correct}/{passageType.total}
+                              </span>
+                              <span className={`text-xs font-semibold ${getPerformanceColor((passageType.correct / passageType.total) * 100)}`}>
+                                {Math.round((passageType.correct / passageType.total) * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                            <div 
+                              className="bg-green-400 h-1 rounded-full" 
+                              style={{ width: `${(passageType.correct / passageType.total) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderSectionStats = (section: string, data: any, isClickable: boolean = false) => {
     const percentage = Math.round((data.correct / data.total) * 100);
     
@@ -251,7 +416,7 @@ export default function StatsPage() {
     return (
       <div className="space-y-6">
         {renderSectionStats('quantitative', stats.quantitative.overall, true)}
-        {renderSectionStats('verbal', stats.verbal)}
+        {renderSectionStats('verbal', stats.verbal.overall, true)}
         {renderSectionStats('data', stats.data)}
       </div>
     );
@@ -296,6 +461,8 @@ export default function StatsPage() {
         <div className="space-y-4">
           {selectedSection === 'quantitative' ? (
             renderQuantitativeBreakdown()
+          ) : selectedSection === 'verbal' ? (
+            renderVerbalBreakdown()
           ) : (
             examType === 'gmat' ? renderGMATStats() : renderLSATStats()
           )}
