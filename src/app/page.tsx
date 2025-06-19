@@ -1,0 +1,140 @@
+"use client";
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import BottomNav from '@/components/BottomNav';
+
+// Sample questions - in a real app, this would come from a database
+const sampleQuestions = [
+  {
+    id: 1,
+    question: "What is the capital of France?",
+    answer: "Paris"
+  },
+  {
+    id: 2,
+    question: "What is 2 + 2?",
+    answer: "4"
+  },
+  {
+    id: 3,
+    question: "What is the largest planet in our solar system?",
+    answer: "Jupiter"
+  }
+];
+
+export default function Home() {
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("06:00");
+  const [selectedQuestion, setSelectedQuestion] = useState(sampleQuestions[0]);
+
+  const handleSetAlarm = () => {
+    // In a real app, this would save to a database
+    console.log(`Alarm set for ${selectedTime} with question: ${selectedQuestion.question}`);
+    setShowAlarmModal(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-16">
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Alarm Prep</h1>
+          <p className="text-lg text-gray-600">Wake up smarter with quiz alarms</p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+          <button 
+            onClick={() => setShowAlarmModal(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Set New Alarm
+          </button>
+          <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors">
+            View Schedule
+          </button>
+        </div>
+
+        {/* Today's Schedule */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Today's Schedule</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h3 className="font-medium">Morning Quiz Alarm</h3>
+                <p className="text-gray-600">6:00 AM</p>
+                <p className="text-sm text-gray-500">Question: {sampleQuestions[0].question}</p>
+              </div>
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h3 className="font-medium">Evening Quiz Alarm</h3>
+                <p className="text-gray-600">10:00 PM</p>
+                <p className="text-sm text-gray-500">Question: {sampleQuestions[1].question}</p>
+              </div>
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Active</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Set Alarm Modal */}
+        {showAlarmModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h2 className="text-2xl font-bold mb-4">Set New Alarm</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Alarm Time
+                  </label>
+                  <input
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Question
+                  </label>
+                  <select
+                    value={selectedQuestion.id}
+                    onChange={(e) => {
+                      const question = sampleQuestions.find(q => q.id === parseInt(e.target.value));
+                      if (question) setSelectedQuestion(question);
+                    }}
+                    className="w-full p-2 border rounded-lg"
+                  >
+                    {sampleQuestions.map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.question}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => setShowAlarmModal(false)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSetAlarm}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Set Alarm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+      <BottomNav />
+    </div>
+  );
+}
