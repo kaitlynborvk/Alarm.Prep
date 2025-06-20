@@ -36,6 +36,7 @@ type Question = {
   correctAnswer: string;
   choices: string[];
   difficulty: string;
+  explanation?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -53,6 +54,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState(DIFFICULTIES[0].id);
   const [difficultyFilter, setDifficultyFilter] = useState("");
+  const [explanation, setExplanation] = useState("");
 
   // Fetch questions from API
   const fetchQuestions = async () => {
@@ -111,6 +113,7 @@ export default function AdminPage() {
           correctAnswer: correctAnswer.trim(),
           choices: allChoices,
           difficulty,
+          explanation: explanation.trim(),
         }),
       });
       if (!res.ok) throw new Error("Failed to add question");
@@ -122,6 +125,7 @@ export default function AdminPage() {
       setCorrectAnswer("");
       setChoices(["", "", "", "", ""]);
       setDifficulty(DIFFICULTIES[0].id);
+      setExplanation("");
     } catch (err: any) {
       setError(err.message || "Unknown error");
     } finally {
@@ -137,8 +141,22 @@ export default function AdminPage() {
   };
 
   // Delete question
-  const deleteQuestion = (id: number) => {
-    setQuestions(questions.filter(q => q.id !== id));
+  const deleteQuestion = async (id: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/questions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error("Failed to delete question");
+      await fetchQuestions();
+    } catch (err: any) {
+      setError(err.message || "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtered questions
@@ -196,6 +214,19 @@ export default function AdminPage() {
               ))}
             </select>
           </div>
+          {/* Difficulty Selection */}
+          <div>
+            <label className="font-semibold block mb-2 text-gray-900">Difficulty</label>
+            <select
+              className="border p-2 rounded w-full text-gray-900"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+            >
+              {DIFFICULTIES.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
           {/* Question Text */}
           <div>
             <label className="font-semibold block mb-2 text-gray-900">Question Text</label>
@@ -236,18 +267,15 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
-          {/* Difficulty Selection */}
+          {/* Explanation */}
           <div>
-            <label className="font-semibold block mb-2 text-gray-900">Difficulty</label>
-            <select
-              className="border p-2 rounded w-full text-gray-900"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+            <label className="font-semibold block mb-2 text-gray-900">Explanation</label>
+            <textarea
+              className="border p-2 rounded w-full h-24 resize-none"
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              placeholder="Enter an explanation for the answer (optional)"
+            />
           </div>
           <button 
             type="submit" 
@@ -300,6 +328,7 @@ export default function AdminPage() {
               <th className="py-2 px-4 border-b text-gray-900">Correct Answer</th>
               <th className="py-2 px-4 border-b text-gray-900">All Choices</th>
               <th className="py-2 px-4 border-b text-gray-900">Difficulty</th>
+              <th className="py-2 px-4 border-b text-gray-900">Explanation</th>
               <th className="py-2 px-4 border-b text-gray-900">Actions</th>
             </tr>
           </thead>
@@ -330,6 +359,7 @@ export default function AdminPage() {
                     </div>
                   </td>
                   <td className="py-2 px-4 border-b">{DIFFICULTIES.find(d => d.id === q.difficulty)?.name || q.difficulty}</td>
+                  <td className="py-2 px-4 border-b max-w-xs whitespace-pre-line">{q.explanation}</td>
                   <td className="py-2 px-4 border-b">
                     <button
                       onClick={() => deleteQuestion(q.id)}

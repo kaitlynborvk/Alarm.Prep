@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         correctAnswer: data.correctAnswer,
         choices: data.choices,
         difficulty: data.difficulty,
+        explanation: data.explanation,
       },
     });
     return NextResponse.json(question, { status: 201 });
@@ -44,6 +45,7 @@ export async function PUT(request: Request) {
         text: json.text,
         type: json.type,
         difficulty: json.difficulty,
+        explanation: json.explanation,
       },
     });
     return NextResponse.json(question);
