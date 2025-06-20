@@ -76,6 +76,7 @@ export default function Home() {
   ];
 
   const handleExamSelection = (exam: "GMAT" | "LSAT") => {
+    console.log('Exam selected:', exam); // DEBUG LOG
     setExamType(exam);
     setSelectedQuestionType(exam === "GMAT" ? "quantitative" : "reading");
     setShowOnboardingModal(false);
@@ -147,17 +148,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Check localStorage for existing exam selection
-    // const storedExamType = localStorage.getItem('examType');
-    // if (storedExamType) {
-    //   setExamType(storedExamType as "GMAT" | "LSAT");
-    //   setSelectedQuestionType(storedExamType === "GMAT" ? "quantitative" : "reading");
-    //   setShowOnboardingModal(false);
-    // }
+    const storedExamType = localStorage.getItem('examType');
+    if (storedExamType === 'GMAT' || storedExamType === 'LSAT') {
+      setExamType(storedExamType as "GMAT" | "LSAT");
+      setSelectedQuestionType(storedExamType === "GMAT" ? "quantitative" : "reading");
+      setShowOnboardingModal(false);
+    } else {
+      setShowOnboardingModal(true);
+    }
+  }, []); // Only run on mount
+
+  useEffect(() => {
     if (selectedQuestionType) {
       setSelectedSubCategory("random");
     }
   }, [selectedQuestionType]);
+
+  console.log('Current examType:', examType); // DEBUG LOG
+  console.log('Available questionTypes:', questionTypes); // DEBUG LOG
 
   return (
     <div className="min-h-screen pb-16">
@@ -366,7 +374,10 @@ export default function Home() {
                       {questionTypes.map((type) => (
                         <button
                           key={type.id}
-                          onClick={() => setSelectedQuestionType(type.id)}
+                          onClick={() => {
+                            console.log('Test Section selected:', type.id); // DEBUG LOG
+                            setSelectedQuestionType(type.id);
+                          }}
                           className={`w-full text-left p-3 rounded-lg font-medium transition-colors ${
                             selectedQuestionType === type.id
                               ? 'bg-alarm-blue text-white'

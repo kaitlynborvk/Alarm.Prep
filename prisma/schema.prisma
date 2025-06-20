@@ -14,9 +14,14 @@ datasource db {
 }
 
 model Question {
-  id        Int      @id @default(autoincrement())
-  text      String
-  type      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  exam          String
+  type          String
+  subcategory   String
+  text          String
+  correctAnswer String
+  choices       String[]
+  difficulty    String   @default("easy")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 } 
