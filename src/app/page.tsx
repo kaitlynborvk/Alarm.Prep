@@ -146,20 +146,20 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
-      <main className="container mx-auto px-4 py-8">
+    <div className="min-h-screen pb-16">
+      <main className="max-w-md mx-auto p-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Alarm Prep</h1>
-          <p className="text-lg text-gray-600">Start your day preparing for your future!</p>
+          <h1 className="text-4xl font-bold text-alarm-black mb-2">Alarm Prep</h1>
+          <p className="text-lg text-alarm-black/80">Your daily dose of exam readiness.</p>
         </div>
 
         {/* Alarms Tab and Create Icon */}
         <div className="text-center mb-12">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-3">Alarms</h2>
+          <h2 className="text-2xl font-semibold text-alarm-black mb-3">Alarms</h2>
           <button 
             onClick={() => setShowAlarmModal(true)}
-            className="w-16 h-16 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto"
+            className="w-16 h-16 bg-alarm-blue text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -168,7 +168,7 @@ export default function Home() {
         </div>
 
         {/* User's Alarms */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
           <div className="space-y-4">
             {userAlarms.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
@@ -177,11 +177,11 @@ export default function Home() {
               </div>
             ) : (
               userAlarms.map((alarm) => (
-                <div key={alarm.id} className="relative p-4 bg-gray-50 rounded-lg">
+                <div key={alarm.id} className="relative p-4 bg-alarm-blue-light/30 rounded-lg border border-alarm-black/10">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">
+                        <div className="text-2xl font-bold text-alarm-black">
                           {alarm.time}
                         </div>
                         <div className="text-sm text-gray-500">
@@ -189,7 +189,7 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{alarm.examType} {alarm.questionType}</h3>
+                        <h3 className="font-medium text-alarm-black">{alarm.examType} {alarm.questionType}</h3>
                         <p className="text-sm text-gray-500 mb-1">
                           Difficulty: {alarm.difficulty.charAt(0).toUpperCase() + alarm.difficulty.slice(1)}
                         </p>
@@ -201,8 +201,8 @@ export default function Home() {
                     <div className="flex items-center">
                       <button
                         onClick={() => handleAlarmToggle(alarm.id)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          alarm.isActive ? 'bg-blue-600' : 'bg-gray-200'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                          alarm.isActive ? 'bg-alarm-blue' : 'bg-gray-300'
                         }`}
                       >
                         <span
@@ -236,19 +236,19 @@ export default function Home() {
         {/* Onboarding Modal */}
         {showOnboardingModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Alarm Prep!</h2>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center border border-alarm-black/10">
+              <h2 className="text-3xl font-bold text-alarm-black mb-4">Welcome to Alarm Prep!</h2>
               <p className="text-lg text-gray-600 mb-8">Which exam are you studying for?</p>
               <div className="space-y-4">
                 <button
                   onClick={() => handleExamSelection("GMAT")}
-                  className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium"
+                  className="w-full p-4 bg-alarm-blue text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium"
                 >
                   GMAT
                 </button>
                 <button
                   onClick={() => handleExamSelection("LSAT")}
-                  className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-lg font-medium"
+                  className="w-full p-4 bg-alarm-blue text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium"
                 >
                   LSAT
                 </button>
@@ -260,17 +260,17 @@ export default function Home() {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full text-center">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Delete Alarm</h2>
-              <p className="text-gray-600 mb-6">Are you sure you want to delete this alarm?</p>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center border border-alarm-black/10">
+              <h2 className="text-xl font-bold text-alarm-black mb-4">Confirm Delete</h2>
+              <p className="text-gray-600 mb-8">Are you sure you want to delete this alarm?</p>
               <div className="flex justify-center space-x-4">
-                <button
+                <button 
                   onClick={handleCancelDelete}
-                  className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Cancel
                 </button>
-                <button
+                <button 
                   onClick={handleConfirmDelete}
                   className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
@@ -284,110 +284,100 @@ export default function Home() {
         {/* Set Alarm Modal */}
         {showAlarmModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-6">Create New Alarm</h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Alarm Time
-                  </label>
-                  <input
-                    type="time"
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full p-3 border rounded-lg text-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Days of the Week
-                  </label>
-                  <div className="flex space-x-2">
-                    {selectedDays.map((day, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleDayToggle(index)}
-                        className={`w-10 h-10 rounded-full font-medium ${
-                          day ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                        } hover:bg-blue-100 transition-colors`}
-                      >
-                        {daysOfWeek[index]}
-                      </button>
-                    ))}
+            <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] flex flex-col border border-alarm-black/10">
+              <h2 className="text-2xl font-bold text-alarm-black mb-6 text-center">Set Alarm</h2>
+              
+              {/* Scrollable Content */}
+              <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                    <div className="relative">
+                      <input 
+                        type="time"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                        className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg text-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                      />
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Click to unselect days</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {examType} Question Type
-                  </label>
-                  <select
-                    value={selectedQuestionType}
-                    onChange={(e) => setSelectedQuestionType(e.target.value)}
-                    className="w-full p-3 border rounded-lg"
-                  >
-                    {questionTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Difficulty Level
-                  </label>
-                  <div className="flex space-x-2">
-                    {difficulties.map((difficulty) => (
-                      <button
-                        key={difficulty.id}
-                        onClick={() => setSelectedDifficulty(difficulty.id)}
-                        className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                          selectedDifficulty === difficulty.id
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {difficulty.name}
-                      </button>
-                    ))}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Days of the Week</label>
+                    <div className="flex justify-between">
+                      {daysOfWeek.map((day, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleDayToggle(index)}
+                          className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
+                            selectedDays[index]
+                              ? 'bg-alarm-blue text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Question Type</label>
+                    <select
+                      value={selectedQuestionType}
+                      onChange={(e) => setSelectedQuestionType(e.target.value)}
+                      className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                    >
+                      {questionTypes.map((type) => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                    <select
+                      value={selectedDifficulty}
+                      onChange={(e) => setSelectedDifficulty(e.target.value)}
+                      className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                    >
+                      {difficulties.map((difficulty) => (
+                        <option key={difficulty.id} value={difficulty.id}>{difficulty.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ringtone</label>
+                    <select
+                      value={selectedRingtone}
+                      onChange={(e) => setSelectedRingtone(e.target.value)}
+                      className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                    >
+                      {ringtones.map((ringtone) => (
+                        <option key={ringtone.id} value={ringtone.id}>{ringtone.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ringtone
-                  </label>
-                  <select
-                    value={selectedRingtone}
-                    onChange={(e) => setSelectedRingtone(e.target.value)}
-                    className="w-full p-3 border rounded-lg"
-                  >
-                    {ringtones.map((ringtone) => (
-                      <option key={ringtone.id} value={ringtone.id}>
-                        {ringtone.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    onClick={() => setShowAlarmModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSetAlarm}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Create Alarm
-                  </button>
-                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex justify-end space-x-4 mt-6 pt-4 border-t border-gray-200">
+                <button 
+                  onClick={() => setShowAlarmModal(false)}
+                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSetAlarm}
+                  className="px-6 py-2 bg-alarm-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Set Alarm
+                </button>
               </div>
             </div>
           </div>
         )}
       </main>
+      
       <BottomNav />
     </div>
   );

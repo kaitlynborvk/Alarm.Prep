@@ -148,8 +148,78 @@ const sampleStats = {
     }
   },
   lsat: {
-    reading: { correct: 52, incorrect: 18, total: 70 },
-    logical: { correct: 41, incorrect: 19, total: 60 }
+    reading: {
+      overall: { correct: 52, incorrect: 18, total: 70 },
+      categories: {
+        readingComprehension: {
+          name: "Reading Comprehension",
+          overall: { correct: 52, incorrect: 18, total: 70 },
+          questionTypes: {
+            mainPoint: { name: "Main Point", correct: 8, incorrect: 2, total: 10 },
+            primaryPurpose: { name: "Primary Purpose", correct: 7, incorrect: 3, total: 10 },
+            attitude: { name: "Author's Attitude/Tone", correct: 6, incorrect: 2, total: 8 },
+            organization: { name: "Passage Organization", correct: 6, incorrect: 2, total: 8 },
+            detail: { name: "Specific Detail", correct: 8, incorrect: 3, total: 11 },
+            inference: { name: "Inference", correct: 7, incorrect: 3, total: 10 },
+            function: { name: "Function", correct: 4, incorrect: 2, total: 6 },
+            analogy: { name: "Analogy", correct: 3, incorrect: 1, total: 4 },
+            application: { name: "Application", correct: 2, incorrect: 1, total: 3 },
+            strengthenWeaken: { name: "Strengthen/Weaken", correct: 1, incorrect: 0, total: 1 }
+          },
+          comparativeReading: {
+            relationship: { name: "Relationship Between Passages", correct: 3, incorrect: 1, total: 4 },
+            comparative: { name: "Comparative Reasoning", correct: 2, incorrect: 1, total: 3 }
+          },
+          topics: {
+            law: { name: "Law", correct: 18, incorrect: 6, total: 24 },
+            science: { name: "Science", correct: 15, incorrect: 5, total: 20 },
+            humanities: { name: "Humanities", correct: 12, incorrect: 4, total: 16 },
+            socialSciences: { name: "Social Sciences", correct: 7, incorrect: 3, total: 10 }
+          }
+        }
+      }
+    },
+    logical: {
+      overall: { correct: 41, incorrect: 19, total: 60 },
+      categories: {
+        logicalReasoning: {
+          name: "Logical Reasoning",
+          overall: { correct: 41, incorrect: 19, total: 60 },
+          questionTypes: {
+            assumptionNecessary: { name: "Assumption (Necessary)", correct: 6, incorrect: 2, total: 8 },
+            assumptionSufficient: { name: "Assumption (Sufficient)", correct: 4, incorrect: 2, total: 6 },
+            strengthen: { name: "Strengthen", correct: 5, incorrect: 2, total: 7 },
+            weaken: { name: "Weaken", correct: 5, incorrect: 3, total: 8 },
+            flaw: { name: "Flaw", correct: 4, incorrect: 2, total: 6 },
+            inference: { name: "Inference", correct: 6, incorrect: 3, total: 9 },
+            mustBeTrue: { name: "Must Be True", correct: 3, incorrect: 1, total: 4 },
+            mostStronglySupported: { name: "Most Strongly Supported", correct: 2, incorrect: 1, total: 3 },
+            principleApply: { name: "Principle (Apply)", correct: 2, incorrect: 1, total: 3 },
+            principleIdentify: { name: "Principle (Identify)", correct: 1, incorrect: 1, total: 2 },
+            parallelReasoning: { name: "Parallel Reasoning", correct: 2, incorrect: 1, total: 3 },
+            parallelFlaw: { name: "Parallel Flaw", correct: 1, incorrect: 0, total: 1 },
+            resolveParadox: { name: "Resolve the Paradox", correct: 2, incorrect: 1, total: 3 },
+            mainPoint: { name: "Main Point", correct: 1, incorrect: 0, total: 1 },
+            methodOfReasoning: { name: "Method of Reasoning", correct: 1, incorrect: 0, total: 1 },
+            roleInArgument: { name: "Role in Argument", correct: 1, incorrect: 0, total: 1 },
+            pointAtIssue: { name: "Point at Issue", correct: 1, incorrect: 0, total: 1 },
+            argumentEvaluation: { name: "Argument Evaluation", correct: 1, incorrect: 0, total: 1 }
+          },
+          difficultyLevels: {
+            easy: { name: "Easy", correct: 15, incorrect: 3, total: 18 },
+            medium: { name: "Medium", correct: 18, incorrect: 8, total: 26 },
+            hard: { name: "Hard", correct: 8, incorrect: 8, total: 16 }
+          },
+          topics: {
+            business: { name: "Business/Economics", correct: 12, incorrect: 5, total: 17 },
+            science: { name: "Science/Technology", correct: 10, incorrect: 4, total: 14 },
+            politics: { name: "Politics/Law", correct: 8, incorrect: 4, total: 12 },
+            social: { name: "Social Issues", correct: 7, incorrect: 3, total: 10 },
+            philosophy: { name: "Philosophy/Ethics", correct: 4, incorrect: 3, total: 7 }
+          }
+        }
+      }
+    }
   }
 };
 
@@ -197,7 +267,7 @@ export default function StatsPage() {
         <div className="flex items-center mb-4">
           <button
             onClick={() => setSelectedSection(null)}
-            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex items-center text-alarm-blue hover:underline transition-colors"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -206,9 +276,9 @@ export default function StatsPage() {
           </button>
         </div>
 
-        {/* Overall Quant Performance */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h3 className="text-lg font-semibold mb-3">Overall Quantitative</h3>
+        {/* Overall Quantitative Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h3 className="text-lg font-semibold mb-3 text-alarm-black">Overall Quantitative</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">
               {quantData.overall.correct}/{quantData.overall.total} correct
@@ -219,75 +289,78 @@ export default function StatsPage() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full" 
+              className="bg-alarm-blue h-2 rounded-full" 
               style={{ width: `${(quantData.overall.correct / quantData.overall.total) * 100}%` }}
             ></div>
           </div>
         </div>
 
-        {/* Categories */}
-        <div className="space-y-4">
-          {Object.entries(quantData.categories).map(([key, category]) => (
-            <div key={key} className="bg-white rounded-lg p-4 shadow-sm">
-              <div 
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}
-              >
-                <h4 className="font-semibold text-gray-800">{category.name}</h4>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    {category.overall.correct}/{category.overall.total}
-                  </span>
-                  <span className={`text-sm font-semibold ${getPerformanceColor((category.overall.correct / category.overall.total) * 100)}`}>
-                    {Math.round((category.overall.correct / category.overall.total) * 100)}%
-                  </span>
-                  <svg 
-                    className={`w-4 h-4 transition-transform ${selectedCategory === key ? 'rotate-180' : ''}`}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-              
-              {/* Category Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+        {/* Main Categories */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Main Categories</h4>
+          <div className="space-y-4">
+            {Object.entries(quantData.categories).map(([key, category]) => (
+              <div key={key}>
                 <div 
-                  className="bg-blue-600 h-2 rounded-full" 
-                  style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
-                ></div>
-              </div>
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}
+                >
+                  <h5 className="font-semibold text-gray-800">{category.name}</h5>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">
+                      {category.overall.correct}/{category.overall.total}
+                    </span>
+                    <span className={`text-sm font-semibold ${getPerformanceColor((category.overall.correct / category.overall.total) * 100)}`}>
+                      {Math.round((category.overall.correct / category.overall.total) * 100)}%
+                    </span>
+                    <svg 
+                      className={`w-4 h-4 transition-transform ${selectedCategory === key ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                
+                {/* Category Progress Bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-alarm-blue h-2 rounded-full" 
+                    style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
+                  ></div>
+                </div>
 
-              {/* Subcategories */}
-              {selectedCategory === key && (
-                <div className="mt-4 space-y-3">
-                  {Object.entries(category.subcategories).map(([subKey, subcategory]) => (
-                    <div key={subKey} className="pl-4 border-l-2 border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">{subcategory.name}</span>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">
-                            {subcategory.correct}/{subcategory.total}
-                          </span>
-                          <span className={`text-xs font-semibold ${getPerformanceColor((subcategory.correct / subcategory.total) * 100)}`}>
-                            {Math.round((subcategory.correct / subcategory.total) * 100)}%
-                          </span>
+                {/* Subcategories */}
+                {selectedCategory === key && (
+                  <div className="mt-3 pl-4 space-y-3 border-l-2 border-alarm-blue/20">
+                    {Object.entries(category.subcategories).map(([subKey, subcategory]) => (
+                      <div key={subKey}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700">{subcategory.name}</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">
+                              {subcategory.correct}/{subcategory.total}
+                            </span>
+                            <span className={`text-xs font-semibold ${getPerformanceColor((subcategory.correct / subcategory.total) * 100)}`}>
+                              {Math.round((subcategory.correct / subcategory.total) * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                          <div 
+                            className="bg-alarm-blue h-1 rounded-full" 
+                            style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
+                          ></div>
                         </div>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
-                        <div 
-                          className="bg-blue-400 h-1 rounded-full" 
-                          style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -303,7 +376,7 @@ export default function StatsPage() {
         <div className="flex items-center mb-4">
           <button
             onClick={() => setSelectedSection(null)}
-            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex items-center text-alarm-blue hover:underline transition-colors"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -313,8 +386,8 @@ export default function StatsPage() {
         </div>
 
         {/* Overall Verbal Performance */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h3 className="text-lg font-semibold mb-3">Overall Verbal</h3>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h3 className="text-lg font-semibold mb-3 text-alarm-black">Overall Verbal</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">
               {verbalData.overall.correct}/{verbalData.overall.total} correct
@@ -325,18 +398,18 @@ export default function StatsPage() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full" 
+              className="bg-alarm-blue h-2 rounded-full" 
               style={{ width: `${(verbalData.overall.correct / verbalData.overall.total) * 100}%` }}
             ></div>
           </div>
         </div>
 
         {/* Skill-Based Subcategories */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h4 className="font-semibold text-gray-800 mb-4">Skill-Based Subcategories</h4>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Skill-Based Subcategories</h4>
           <div className="space-y-3">
             {Object.entries(readingComp.subcategories).map(([subKey, subcategory]) => (
-              <div key={subKey} className="pl-4 border-l-2 border-gray-200">
+              <div key={subKey} className="pl-4 border-l-2 border-blue-200">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-700">{subcategory.name}</span>
                   <div className="flex items-center space-x-2">
@@ -350,7 +423,7 @@ export default function StatsPage() {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
                   <div 
-                    className="bg-blue-400 h-1 rounded-full" 
+                    className="bg-alarm-blue h-1 rounded-full" 
                     style={{ width: `${(subcategory.correct / subcategory.total) * 100}%` }}
                   ></div>
                 </div>
@@ -360,8 +433,8 @@ export default function StatsPage() {
         </div>
 
         {/* Passage Type Performance */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h4 className="font-semibold text-gray-800 mb-4">Passage Type Performance</h4>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Passage Type Performance</h4>
           <div className="space-y-3">
             {Object.entries(readingComp.passageTypes).map(([typeKey, passageType]) => (
               <div key={typeKey} className="pl-4 border-l-2 border-green-200">
@@ -399,7 +472,7 @@ export default function StatsPage() {
         <div className="flex items-center mb-4">
           <button
             onClick={() => setSelectedSection(null)}
-            className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex items-center text-alarm-blue hover:underline transition-colors"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -409,8 +482,8 @@ export default function StatsPage() {
         </div>
 
         {/* Overall Data Insights Performance */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h3 className="text-lg font-semibold mb-3">Overall Data Insights</h3>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h3 className="text-lg font-semibold mb-3 text-alarm-black">Overall Data Insights</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">
               {dataInsights.overall.correct}/{dataInsights.overall.total} correct
@@ -421,15 +494,15 @@ export default function StatsPage() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full" 
+              className="bg-alarm-blue h-2 rounded-full" 
               style={{ width: `${(dataInsights.overall.correct / dataInsights.overall.total) * 100}%` }}
             ></div>
           </div>
         </div>
 
         {/* Question Format Categories */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h4 className="font-semibold text-gray-800 mb-4">Question Format Categories</h4>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Question Format Categories</h4>
           <div className="space-y-3">
             {Object.entries(dataInsights.categories).map(([key, category]) => (
               <div key={key} className="pl-4 border-l-2 border-blue-200">
@@ -446,7 +519,7 @@ export default function StatsPage() {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
                   <div 
-                    className="bg-blue-400 h-1 rounded-full" 
+                    className="bg-alarm-blue h-1 rounded-full" 
                     style={{ width: `${(category.overall.correct / category.overall.total) * 100}%` }}
                   ></div>
                 </div>
@@ -456,8 +529,8 @@ export default function StatsPage() {
         </div>
 
         {/* Data Source Performance */}
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h4 className="font-semibold text-gray-800 mb-4">Data Source Performance</h4>
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Data Source Performance</h4>
           <div className="space-y-3">
             {Object.entries(dataInsights.dataSources).map(([key, dataSource]) => (
               <div key={key} className="pl-4 border-l-2 border-green-200">
@@ -491,11 +564,11 @@ export default function StatsPage() {
     
     return (
       <div 
-        className={`bg-white rounded-lg p-4 shadow-sm ${isClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+        className={`bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10 ${isClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
         onClick={isClickable ? () => setSelectedSection(section) : undefined}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold capitalize">{section}</h3>
+          <h3 className="text-lg font-semibold capitalize text-alarm-black">{section}</h3>
           {isClickable && (
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -512,7 +585,7 @@ export default function StatsPage() {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
-            className="bg-blue-600 h-2 rounded-full" 
+            className="bg-alarm-blue h-2 rounded-full" 
             style={{ width: `${percentage}%` }}
           ></div>
         </div>
@@ -535,13 +608,263 @@ export default function StatsPage() {
     );
   };
 
+  const renderLSATReadingBreakdown = () => {
+    const readingData = sampleStats.lsat.reading;
+    const readingComp = readingData.categories.readingComprehension;
+    
+    return (
+      <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => setSelectedSection(null)}
+            className="flex items-center text-alarm-blue hover:underline transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Overview
+          </button>
+        </div>
+
+        {/* Overall Reading Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h3 className="text-lg font-semibold mb-3 text-alarm-black">Overall Reading Comprehension</h3>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">
+              {readingData.overall.correct}/{readingData.overall.total} correct
+            </span>
+            <span className={`font-semibold ${getPerformanceColor((readingData.overall.correct / readingData.overall.total) * 100)}`}>
+              {Math.round((readingData.overall.correct / readingData.overall.total) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-alarm-blue h-2 rounded-full" 
+              style={{ width: `${(readingData.overall.correct / readingData.overall.total) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Question Types */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Question Types</h4>
+          <div className="space-y-3">
+            {Object.entries(readingComp.questionTypes).map(([key, questionType]) => (
+              <div key={key} className="pl-4 border-l-2 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{questionType.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {questionType.correct}/{questionType.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((questionType.correct / questionType.total) * 100)}`}>
+                      {Math.round((questionType.correct / questionType.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-alarm-blue h-1 rounded-full" 
+                    style={{ width: `${(questionType.correct / questionType.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Comparative Reading */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Comparative Reading</h4>
+          <div className="space-y-3">
+            {Object.entries(readingComp.comparativeReading).map(([key, comparative]) => (
+              <div key={key} className="pl-4 border-l-2 border-purple-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{comparative.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {comparative.correct}/{comparative.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((comparative.correct / comparative.total) * 100)}`}>
+                      {Math.round((comparative.correct / comparative.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-purple-400 h-1 rounded-full" 
+                    style={{ width: `${(comparative.correct / comparative.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Topic Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Topic Performance</h4>
+          <div className="space-y-3">
+            {Object.entries(readingComp.topics).map(([key, topic]) => (
+              <div key={key} className="pl-4 border-l-2 border-green-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{topic.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {topic.correct}/{topic.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((topic.correct / topic.total) * 100)}`}>
+                      {Math.round((topic.correct / topic.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-green-400 h-1 rounded-full" 
+                    style={{ width: `${(topic.correct / topic.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLSATLogicalBreakdown = () => {
+    const logicalData = sampleStats.lsat.logical;
+    const logicalReasoning = logicalData.categories.logicalReasoning;
+    
+    return (
+      <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => setSelectedSection(null)}
+            className="flex items-center text-alarm-blue hover:underline transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Overview
+          </button>
+        </div>
+
+        {/* Overall Logical Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h3 className="text-lg font-semibold mb-3 text-alarm-black">Overall Logical Reasoning</h3>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">
+              {logicalData.overall.correct}/{logicalData.overall.total} correct
+            </span>
+            <span className={`font-semibold ${getPerformanceColor((logicalData.overall.correct / logicalData.overall.total) * 100)}`}>
+              {Math.round((logicalData.overall.correct / logicalData.overall.total) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-green-600 h-2 rounded-full" 
+              style={{ width: `${(logicalData.overall.correct / logicalData.overall.total) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Question Types */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Question Types</h4>
+          <div className="space-y-3">
+            {Object.entries(logicalReasoning.questionTypes).map(([key, questionType]) => (
+              <div key={key} className="pl-4 border-l-2 border-alarm-blue/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700 flex-1 mr-2 leading-tight">{questionType.name}</span>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <span className="text-xs text-gray-500">
+                      {questionType.correct}/{questionType.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((questionType.correct / questionType.total) * 100)}`}>
+                      {Math.round((questionType.correct / questionType.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-alarm-blue h-1 rounded-full" 
+                    style={{ width: `${(questionType.correct / questionType.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Difficulty Levels */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Difficulty Levels</h4>
+          <div className="space-y-3">
+            {Object.entries(logicalReasoning.difficultyLevels).map(([key, difficulty]) => (
+              <div key={key} className="pl-4 border-l-2 border-alarm-yellow/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{difficulty.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {difficulty.correct}/{difficulty.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((difficulty.correct / difficulty.total) * 100)}`}>
+                      {Math.round((difficulty.correct / difficulty.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-alarm-yellow h-1 rounded-full" 
+                    style={{ width: `${(difficulty.correct / difficulty.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Topic Performance */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-alarm-black/10">
+          <h4 className="font-semibold text-alarm-black mb-4">Topic Performance</h4>
+          <div className="space-y-3">
+            {Object.entries(logicalReasoning.topics).map(([key, topic]) => (
+              <div key={key} className="pl-4 border-l-2 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{topic.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {topic.correct}/{topic.total}
+                    </span>
+                    <span className={`text-xs font-semibold ${getPerformanceColor((topic.correct / topic.total) * 100)}`}>
+                      {Math.round((topic.correct / topic.total) * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-alarm-blue h-1 rounded-full" 
+                    style={{ width: `${(topic.correct / topic.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderLSATStats = () => {
     const stats = sampleStats.lsat;
     
     return (
       <div className="space-y-6">
-        {renderSectionStats('reading', stats.reading)}
-        {renderSectionStats('logical', stats.logical)}
+        {renderSectionStats('reading', stats.reading.overall, true)}
+        {renderSectionStats('logical', stats.logical.overall, true)}
       </div>
     );
   };
@@ -564,9 +887,9 @@ export default function StatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen pb-20">
       <div className="max-w-md mx-auto p-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">
+        <h1 className="text-2xl font-bold text-alarm-black mb-6">
           {examType.toUpperCase()} Performance Stats
         </h1>
         
@@ -578,6 +901,10 @@ export default function StatsPage() {
             renderVerbalBreakdown()
           ) : selectedSection === 'data' ? (
             renderDataBreakdown()
+          ) : selectedSection === 'reading' ? (
+            renderLSATReadingBreakdown()
+          ) : selectedSection === 'logical' ? (
+            renderLSATLogicalBreakdown()
           ) : (
             examType === 'gmat' ? renderGMATStats() : renderLSATStats()
           )}

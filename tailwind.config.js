@@ -6,7 +6,14 @@ module.exports = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'alarm-blue': '#0063e0',
+        'alarm-blue-light': '#a8d8ff',
+        'alarm-yellow': '#eab308',
+        'alarm-black': '#2c2c2c',
+      },
+    },
   },
   plugins: [],
   future: {
