@@ -2,30 +2,34 @@
 
 import { useState, useEffect } from "react";
 
-const EXAMS = ["GMAT", "LSAT"];
+const EXAMS = ["GMAT", "LSAT"] as const;
 const QUESTION_TYPES = {
   GMAT: [
     { id: "quantitative", name: "Quantitative Reasoning" },
     { id: "verbal", name: "Verbal Reasoning" },
-    { id: "data", name: "Data Insights" }
+    { id: "data", name: "Data Insights" },
   ],
   LSAT: [
     { id: "reading", name: "Reading Comprehension" },
-    { id: "logical", name: "Logical Reasoning" }
-  ]
-};
+    { id: "logical", name: "Logical Reasoning" },
+  ],
+} as const;
 const QUESTION_SUBCATEGORIES = {
   quantitative: ["Random", "Algebra & Equations", "Arithmetic & Number Properties", "Word Problems & Math Logic", "Logic, Sets, and Counting"],
   verbal: ["Random", "Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
   data: ["Random", "Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
   reading: ["Random", "Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
   logical: ["Random", "Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
-};
+} as const;
 const DIFFICULTIES = [
   { id: "easy", name: "Easy" },
   { id: "intermediate", name: "Intermediate" },
-  { id: "hard", name: "Hard" }
-];
+  { id: "hard", name: "Hard" },
+] as const;
+
+type QuestionTypeID = typeof QUESTION_TYPES[keyof typeof QUESTION_TYPES][number]['id'];
+type Subcategory = typeof QUESTION_SUBCATEGORIES[keyof typeof QUESTION_SUBCATEGORIES][number];
+type DifficultyID = typeof DIFFICULTIES[number]['id'];
 
 type Question = {
   id: number;
@@ -44,15 +48,17 @@ type Question = {
 export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [filter, setFilter] = useState<string>("");
-  const [exam, setExam] = useState(EXAMS[0]);
-  const [type, setType] = useState(QUESTION_TYPES[EXAMS[0]][0].id);
-  const [subcategory, setSubcategory] = useState(QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id][0]);
+  const [exam, setExam] = useState<keyof typeof QUESTION_TYPES>(EXAMS[0]);
+  const [type, setType] = useState<QuestionTypeID>(QUESTION_TYPES[EXAMS[0]][0].id);
+  const [subcategory, setSubcategory] = useState<Subcategory>(
+    QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id][0]
+  );
   const [text, setText] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [choices, setChoices] = useState(["", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [difficulty, setDifficulty] = useState(DIFFICULTIES[0].id);
+  const [difficulty, setDifficulty] = useState<DifficultyID>(DIFFICULTIES[0].id);
   const [difficultyFilter, setDifficultyFilter] = useState("");
   const [explanation, setExplanation] = useState("");
 
@@ -78,16 +84,17 @@ export default function AdminPage() {
 
   // Update type and subcategory when exam changes
   const handleExamChange = (newExam: string) => {
-    setExam(newExam);
-    const firstType = QUESTION_TYPES[newExam][0].id;
+    const examKey = newExam as keyof typeof QUESTION_TYPES;
+    setExam(examKey);
+    const firstType = QUESTION_TYPES[examKey][0].id;
     setType(firstType);
     setSubcategory(QUESTION_SUBCATEGORIES[firstType][0]);
   };
 
   // Update subcategory when type changes
   const handleTypeChange = (newType: string) => {
-    setType(newType);
-    setSubcategory(QUESTION_SUBCATEGORIES[newType][0]);
+    setType(newType as QuestionTypeID);
+    setSubcategory(QUESTION_SUBCATEGORIES[newType as keyof typeof QUESTION_SUBCATEGORIES][0]);
   };
 
   // Add question handler (POST to API)
@@ -196,7 +203,7 @@ export default function AdminPage() {
               value={type}
               onChange={(e) => handleTypeChange(e.target.value)}
             >
-              {QUESTION_TYPES[exam].map((t) => (
+              {QUESTION_TYPES[exam as keyof typeof QUESTION_TYPES].map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
@@ -207,7 +214,7 @@ export default function AdminPage() {
             <select
               className="border p-2 rounded w-full text-gray-900"
               value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value)}
+              onChange={(e) => setSubcategory(e.target.value as Subcategory)}
             >
               {QUESTION_SUBCATEGORIES[type].map((sub) => (
                 <option key={sub} value={sub}>{sub}</option>
@@ -220,7 +227,7 @@ export default function AdminPage() {
             <select
               className="border p-2 rounded w-full text-gray-900"
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
+              onChange={(e) => setDifficulty(e.target.value as DifficultyID)}
             >
               {DIFFICULTIES.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
@@ -343,7 +350,7 @@ export default function AdminPage() {
               displayedQuestions.map((q) => (
                 <tr key={q.id}>
                   <td className="py-2 px-4 border-b">{q.exam}</td>
-                  <td className="py-2 px-4 border-b">{QUESTION_TYPES[q.exam].find(t => t.id === q.type)?.name || q.type}</td>
+                  <td className="py-2 px-4 border-b">{QUESTION_TYPES[q.exam as keyof typeof QUESTION_TYPES].find(t => t.id === q.type)?.name || q.type}</td>
                   <td className="py-2 px-4 border-b">{q.subcategory}</td>
                   <td className="py-2 px-4 border-b max-w-xs">{q.text}</td>
                   <td className="py-2 px-4 border-b text-green-700 font-semibold">
