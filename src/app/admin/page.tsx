@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [choices, setChoices] = useState(["", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<DifficultyID>(DIFFICULTIES[0].id);
   const [difficultyFilter, setDifficultyFilter] = useState("");
   const [explanation, setExplanation] = useState("");
@@ -89,6 +90,7 @@ export default function AdminPage() {
   const fetchQuestions = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const res = await fetch("/api/questions");
       if (!res.ok) throw new Error("Failed to fetch questions");
@@ -173,6 +175,7 @@ export default function AdminPage() {
     console.log('Submitting question with difficulty:', difficulty);
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const res = await fetch("/api/questions", {
         method: "POST",
@@ -198,7 +201,7 @@ export default function AdminPage() {
       setChoices(["", "", "", "", ""]);
       setDifficulty(DIFFICULTIES[0].id);
       setExplanation("");
-      alert("Question added successfully!");
+      setSuccess("Question added successfully!");
     } catch (err: any) {
       setError(err.message || "Unknown error");
     } finally {
@@ -219,6 +222,7 @@ export default function AdminPage() {
     
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const res = await fetch("/api/questions", {
         method: "DELETE",
@@ -227,6 +231,7 @@ export default function AdminPage() {
       });
       if (!res.ok) throw new Error("Failed to delete question");
       await fetchQuestions();
+      setSuccess("Question deleted successfully!");
     } catch (err: any) {
       setError(err.message || "Unknown error");
     } finally {
@@ -274,8 +279,8 @@ export default function AdminPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
-          <h1 className="text-3xl font-bold text-alarm-black mb-2">Question Management</h1>
-          <p className="text-lg text-alarm-black/80">Manage LSAT and GMAT questions for your alarm app</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Question Management</h1>
+          <p className="text-lg text-gray-700">Manage LSAT and GMAT questions for your alarm app</p>
         </div>
 
         {loading && (
@@ -297,17 +302,28 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-green-800 font-bold">{success}</span>
+            </div>
+          </div>
+        )}
         
         {/* Add Question Form - Always Visible */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
-          <h2 className="text-xl font-semibold text-alarm-black mb-4">Add New Question</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Question</h2>
           <form onSubmit={addQuestion} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Exam Selection */}
               <div>
-                <label className="block text-sm font-medium text-alarm-black mb-2">Exam</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Exam</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                   value={exam}
                   onChange={(e) => handleExamChange(e.target.value)}
                 >
@@ -319,9 +335,9 @@ export default function AdminPage() {
 
               {/* Question Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-alarm-black mb-2">Question Type</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Question Type</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                   value={type}
                   onChange={(e) => handleTypeChange(e.target.value)}
                 >
@@ -333,9 +349,9 @@ export default function AdminPage() {
 
               {/* Subcategory Selection */}
               <div>
-                <label className="block text-sm font-medium text-alarm-black mb-2">Subcategory</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Subcategory</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value as Subcategory)}
                 >
@@ -347,9 +363,9 @@ export default function AdminPage() {
 
               {/* Difficulty Selection */}
               <div>
-                <label className="block text-sm font-medium text-alarm-black mb-2">Difficulty</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Difficulty</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value as DifficultyID)}
                 >
@@ -362,32 +378,32 @@ export default function AdminPage() {
 
             {/* Question Text with LaTeX Support */}
             <div>
-              <label className="block text-sm font-medium text-alarm-black mb-2">Question Text</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Question Text</label>
               
               {/* LaTeX Help Section */}
               <div className="mb-3 p-3 bg-alarm-blue-light/20 rounded-lg border border-alarm-blue/20">
-                <h4 className="text-sm font-medium text-alarm-black mb-2">💡 Math Symbols Help</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">💡 Math Symbols Help</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-3">
                   {LATEX_SYMBOLS.map((symbol, index) => (
                     <button
                       key={index}
                       type="button"
                       onClick={() => insertLatexSymbol(symbol.latex, 'question')}
-                      className="text-xs bg-white border border-gray-300 rounded px-2 py-1 hover:bg-gray-50 transition-colors"
+                      className="text-sm font-semibold bg-white border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
                       title={`${symbol.label}: ${symbol.description}`}
                     >
                       {symbol.description}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-alarm-black/70">
+                <p className="text-xs text-gray-800">
                   <strong>Examples:</strong> x^2 → x², \sqrt{5} → √5, \frac{1}{2} → ½
                 </p>
               </div>
 
               <textarea
                 id="question-textarea"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Enter your question here... Use LaTeX for math: x^2, \sqrt{5}, \frac{1}{2}"
@@ -418,21 +434,21 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => insertLatexSymbol("\\sqrt{}", 'answer')}
-                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors mr-1"
+                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
                   >
                     √
                   </button>
                   <button
                     type="button"
                     onClick={() => insertLatexSymbol("\\frac{}{}", 'answer')}
-                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors mr-1"
+                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
                   >
                     fraction
                   </button>
                   <button
                     type="button"
                     onClick={() => insertLatexSymbol("^", 'answer')}
-                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors"
+                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 shadow-sm text-green-800"
                   >
                     x²
                   </button>
@@ -466,21 +482,21 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("\\sqrt{}", 'choice')}
-                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors mr-1"
+                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
                         >
                           √
                         </button>
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("\\frac{}{}", 'choice')}
-                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors mr-1"
+                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
                         >
                           fraction
                         </button>
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("^", 'choice')}
-                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors"
+                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
                         >
                           x²
                         </button>
@@ -512,7 +528,7 @@ export default function AdminPage() {
 
             <button 
               type="submit" 
-              className="bg-alarm-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 font-semibold text-lg shadow-lg"
               disabled={loading}
             >
               {loading ? 'Adding...' : 'Add Question'}
@@ -591,7 +607,7 @@ export default function AdminPage() {
                     </div>
                     <button
                       onClick={() => deleteQuestion(q.id)}
-                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                      className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 border-2 border-red-300 hover:border-red-500 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
                       title="Delete question"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

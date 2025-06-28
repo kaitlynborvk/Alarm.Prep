@@ -14,11 +14,31 @@ async function main() {
       exam: 'GMAT',
       type: 'Quantitative',
       subcategory: 'Problem Solving',
-      text: 'If 3x + 5 = 20, what is the value of x?',
-      correctAnswer: '5',
-      choices: ['3', '4', '5', '6'],
+      text: 'If $3x + 5 = 20$, what is the value of $x$?',
+      correctAnswer: '$x = 5$',
+      choices: ['$x = 3$', '$x = 4$', '$x = 5$', '$x = 6$'],
       difficulty: 'easy',
-      explanation: 'Solve for x: 3x + 5 = 20, so 3x = 15, therefore x = 5'
+      explanation: 'Solve for $x$: $3x + 5 = 20$, so $3x = 15$, therefore $x = 5$'
+    },
+    {
+      exam: 'GMAT',
+      type: 'Quantitative',
+      subcategory: 'Problem Solving',
+      text: 'What is the value of $x^2 + 2x - 8$ when $x = 3$?',
+      correctAnswer: '$7$',
+      choices: ['$5$', '$7$', '$9$', '$11$'],
+      difficulty: 'easy',
+      explanation: 'Substitute $x = 3$: $(3)^2 + 2(3) - 8 = 9 + 6 - 8 = 7$'
+    },
+    {
+      exam: 'GMAT',
+      type: 'Quantitative',
+      subcategory: 'Algebra',
+      text: 'If $\\frac{x^2 - 4}{x + 2} = 5$, what is the value of $x$?',
+      correctAnswer: '$x = 7$',
+      choices: ['$x = 5$', '$x = 6$', '$x = 7$', '$x = 8$'],
+      difficulty: 'medium',
+      explanation: 'Factor the numerator: $\\frac{(x-2)(x+2)}{x+2} = x-2 = 5$, so $x = 7$'
     },
     {
       exam: 'GMAT',
@@ -53,6 +73,16 @@ async function main() {
       ],
       difficulty: 'medium',
       explanation: 'If most pollution comes from vehicles, then reducing traffic (vehicles) would reduce pollution.'
+    },
+    {
+      exam: 'LSAT',
+      type: 'Logic Games',
+      subcategory: 'Analytical Reasoning',
+      text: 'In a sequence, the formula is $a_n = 2^n + 3$. What is the value of $a_4$?',
+      correctAnswer: '$a_4 = 19$',
+      choices: ['$a_4 = 15$', '$a_4 = 17$', '$a_4 = 19$', '$a_4 = 21$'],
+      difficulty: 'medium',
+      explanation: 'Substitute $n = 4$: $a_4 = 2^4 + 3 = 16 + 3 = 19$'
     },
     {
       exam: 'LSAT',

@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
+import AlarmScreen from '@/components/AlarmScreen';
+import { dataService, Question } from '@/services/dataService';
+import { IOSService } from '@/services/iosService';
+import { alarmService, AlarmInstance } from '@/services/alarmService';
 
 // Sample questions - in a real app, this would come from a database
 const sampleQuestions = [
@@ -25,9 +29,11 @@ const sampleQuestions = [
 
 export default function Home() {
   const [showAlarmModal, setShowAlarmModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(true); // Show onboarding on first visit
+  const [showOnboardingModal, setShowOnboardingModal] = useState(true);
   const [selectedTime, setSelectedTime] = useState("06:00");
-  const [selectedQuestion, setSelectedQuestion] = useState(sampleQuestions[0]);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedDays, setSelectedDays] = useState([true, true, true, true, true, true, true]); // All days selected by default
   const [selectedQuestionType, setSelectedQuestionType] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("random");
@@ -37,8 +43,79 @@ export default function Home() {
   const [userAlarms, setUserAlarms] = useState<any[]>([]); // Store user's created alarms
   const [showDeleteModal, setShowDeleteModal] = useState(false); // Show delete confirmation modal
   const [alarmToDelete, setAlarmToDelete] = useState<number | null>(null); // Track which alarm to delete
+  
+  // Alarm system state
+  const [activeAlarm, setActiveAlarm] = useState<AlarmInstance | null>(null);
+  const [showAlarmScreen, setShowAlarmScreen] = useState(false);
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
+
+  // Load questions on component mount
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setIsLoading(true);
+      try {
+        const loadedQuestions = await dataService.getQuestions();
+        setQuestions(loadedQuestions);
+        if (loadedQuestions.length > 0) {
+          setSelectedQuestion(loadedQuestions[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load questions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const initializeAlarmSystem = async () => {
+      try {
+        // Initialize alarm service
+        await alarmService.initialize();
+        console.log('Alarm service initialized');
+        
+        // Load existing alarms
+        const existingAlarms = alarmService.getAlarms();
+        setUserAlarms(existingAlarms);
+        
+        // Load any active alarms
+        await alarmService.loadActiveAlarms();
+      } catch (error) {
+        console.error('Failed to initialize alarm system:', error);
+      }
+    };
+
+    loadQuestions();
+    initializeAlarmSystem();
+    
+    // Set up iOS notification handlers
+    IOSService.setupNotificationHandlers((notification) => {
+      // Handle alarm notification tap
+      console.log('Alarm triggered:', notification);
+    });
+
+    // Set up alarm event listeners
+    const handleAlarmTriggered = (event: CustomEvent) => {
+      console.log('Alarm triggered event:', event.detail);
+      setActiveAlarm(event.detail);
+      setShowAlarmScreen(true);
+    };
+
+    const handleAlarmDismissed = (event: CustomEvent) => {
+      console.log('Alarm dismissed event:', event.detail);
+      setActiveAlarm(null);
+      setShowAlarmScreen(false);
+    };
+
+    // Add event listeners
+    window.addEventListener('alarmTriggered', handleAlarmTriggered as EventListener);
+    window.addEventListener('alarmDismissed', handleAlarmDismissed as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('alarmTriggered', handleAlarmTriggered as EventListener);
+      window.removeEventListener('alarmDismissed', handleAlarmDismissed as EventListener);
+    };
+  }, []);
   
   const gmatQuestionTypes = [
     { id: "quantitative", name: "Quantitative Reasoning" },
@@ -90,14 +167,22 @@ export default function Home() {
     setSelectedDays(newDays);
   };
 
-  const handleAlarmToggle = (alarmId: number) => {
-    setUserAlarms(prevAlarms => 
-      prevAlarms.map(alarm => 
-        alarm.id === alarmId 
-          ? { ...alarm, isActive: !alarm.isActive }
-          : alarm
-      )
-    );
+  const handleAlarmToggle = async (alarmId: number) => {
+    try {
+      const alarm = userAlarms.find(a => a.id === alarmId);
+      if (alarm) {
+        await alarmService.updateAlarm(alarmId, { isActive: !alarm.isActive });
+        setUserAlarms(prevAlarms => 
+          prevAlarms.map(alarm => 
+            alarm.id === alarmId 
+              ? { ...alarm, isActive: !alarm.isActive }
+              : alarm
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to toggle alarm:', error);
+    }
   };
 
   const handleDeleteClick = (alarmId: number) => {
@@ -105,11 +190,16 @@ export default function Home() {
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (alarmToDelete) {
-      setUserAlarms(prevAlarms => prevAlarms.filter(alarm => alarm.id !== alarmToDelete));
-      setShowDeleteModal(false);
-      setAlarmToDelete(null);
+      try {
+        await alarmService.deleteAlarm(alarmToDelete);
+        setUserAlarms(prevAlarms => prevAlarms.filter(alarm => alarm.id !== alarmToDelete));
+        setShowDeleteModal(false);
+        setAlarmToDelete(null);
+      } catch (error) {
+        console.error('Failed to delete alarm:', error);
+      }
     }
   };
 
@@ -118,33 +208,103 @@ export default function Home() {
     setAlarmToDelete(null);
   };
 
-  const handleSetAlarm = () => {
-    // Create new alarm object
-    const newAlarm = {
-      id: Date.now(), // Simple ID generation
-      time: selectedTime,
-      days: selectedDays,
-      questionType: selectedQuestionType,
-      subCategory: selectedSubCategory,
-      difficulty: selectedDifficulty,
-      ringtone: selectedRingtone,
-      examType: examType,
-      isActive: true,
-      createdAt: new Date().toISOString()
-    };
+  const handleSetAlarm = async () => {
+    if (!examType || !selectedQuestionType) {
+      console.error('Missing exam type or question type');
+      return;
+    }
 
-    // Add to user alarms
-    setUserAlarms(prevAlarms => [...prevAlarms, newAlarm]);
+    try {
+      // Create alarm using alarmService
+      const alarmId = await alarmService.createAlarm({
+        time: selectedTime,
+        days: selectedDays,
+        examType: examType,
+        questionType: selectedQuestionType,
+        difficulty: selectedDifficulty as 'easy' | 'intermediate' | 'hard',
+        isActive: true
+      });
 
-    // In a real app, this would save to a database
-    console.log('New alarm created:', newAlarm);
-    console.log(`Alarm set for ${selectedTime} with question type: ${selectedQuestionType}`);
-    console.log(`Sub-category: ${selectedSubCategory}`);
-    console.log(`Days: ${selectedDays.map((day, index) => day ? daysOfWeek[index] : '').filter(day => day).join(', ')}`);
-    console.log(`Difficulty: ${selectedDifficulty}`);
-    console.log(`Ringtone: ${selectedRingtone}`);
+      // Create display object for UI
+      const newAlarm = {
+        id: alarmId,
+        time: selectedTime,
+        days: selectedDays,
+        questionType: selectedQuestionType,
+        subCategory: selectedSubCategory,
+        difficulty: selectedDifficulty,
+        ringtone: selectedRingtone,
+        examType: examType,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
+      // Add to user alarms for display
+      setUserAlarms(prevAlarms => [...prevAlarms, newAlarm]);
+
+      console.log('New alarm created:', newAlarm);
+      console.log(`Alarm set for ${selectedTime} with question type: ${selectedQuestionType}`);
+      console.log(`Sub-category: ${selectedSubCategory}`);
+      console.log(`Days: ${selectedDays.map((day, index) => day ? daysOfWeek[index] : '').filter(day => day).join(', ')}`);
+      console.log(`Difficulty: ${selectedDifficulty}`);
+      
+      setShowAlarmModal(false);
+    } catch (error) {
+      console.error('Failed to create alarm:', error);
+    }
+  };
+
+  // Test function to trigger an alarm immediately (for testing)
+  const handleTestAlarm = async () => {
+    console.log('Test alarm button clicked!');
+    console.log('Current examType:', examType);
     
-    setShowAlarmModal(false);
+    try {
+      // Get a test question
+      const testQuestion = await dataService.getRandomQuestion({
+        exam: examType || 'GMAT',
+        type: 'Quantitative',
+        difficulty: 'easy'
+      });
+
+      console.log('Test question retrieved:', testQuestion);
+
+      if (testQuestion) {
+        const testAlarmInstance: AlarmInstance = {
+          alarmId: 9999, // Test alarm ID
+          scheduledTime: new Date(),
+          question: testQuestion,
+          isActive: true
+        };
+
+        console.log('Creating test alarm instance:', testAlarmInstance);
+
+        // Add to alarm service's active alarms for proper validation
+        alarmService.addTestAlarmInstance(testAlarmInstance);
+
+        setActiveAlarm(testAlarmInstance);
+        setShowAlarmScreen(true);
+        
+        console.log('Test alarm screen should now be visible');
+      } else {
+        console.error('No test question found');
+        alert('No test question found. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Failed to create test alarm:', error);
+      alert('Failed to create test alarm. Check console for details.');
+    }
+  };
+
+  // Test function to schedule a real notification (iOS testing)
+  const handleTestNotification = async () => {
+    try {
+      await alarmService.scheduleTestAlarm(10); // 10 seconds from now
+      alert('Test notification scheduled for 10 seconds from now. Put the app in background to test!');
+    } catch (error) {
+      console.error('Failed to schedule test notification:', error);
+      alert('Failed to schedule test notification. Check console for details.');
+    }
   };
 
   useEffect(() => {
@@ -168,7 +328,7 @@ export default function Home() {
   console.log('Available questionTypes:', questionTypes); // DEBUG LOG
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="min-h-screen pb-16 bg-blue-50">
       <main className="max-w-md mx-auto p-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -184,12 +344,32 @@ export default function Home() {
               setShowAlarmModal(true);
               setSelectedQuestionType("");
             }}
-            className="w-16 h-16 bg-alarm-blue text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto"
+            className="w-16 h-16 bg-alarm-blue text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto mb-4"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </button>
+          
+          {/* Test Buttons - Only show in development */}
+          {(process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) && (
+            <div className="flex justify-center space-x-2 mt-2">
+              <button 
+                onClick={handleTestAlarm}
+                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-medium"
+                title="Test alarm modal (immediate)"
+              >
+                Test Modal
+              </button>
+              <button 
+                onClick={handleTestNotification}
+                className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs font-medium"
+                title="Test iOS notification (10 seconds)"
+              >
+                Test Notification
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Alarms List */}
@@ -457,7 +637,17 @@ export default function Home() {
       </main>
       
       <BottomNav />
+      
+      {/* Alarm Screen Modal */}
+      {showAlarmScreen && activeAlarm && (
+        <AlarmScreen 
+          alarmInstance={activeAlarm}
+          onDismiss={() => {
+            setShowAlarmScreen(false);
+            setActiveAlarm(null);
+          }}
+        />
+      )}
     </div>
   );
 }
- 

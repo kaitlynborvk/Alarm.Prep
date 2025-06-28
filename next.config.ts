@@ -4,7 +4,13 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  /* config options here */
+  // Enable static export for iOS build
+  output: process.env.NEXT_OUTPUT === 'export' ? 'export' : undefined,
+  distDir: process.env.NEXT_OUTPUT === 'export' ? 'out' : '.next',
+  trailingSlash: true,
+  images: {
+    unoptimized: process.env.NEXT_OUTPUT === 'export'
+  }
 };
 
-module.exports = nextConfig;
+export default nextConfig;

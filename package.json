@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:static": "NEXT_OUTPUT=export next build",
     "start": "next start -p $PORT",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -17,10 +18,17 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "npx prisma db seed",
-    "db:test": "tsx scripts/test-db.ts"
+    "db:test": "tsx scripts/test-db.ts",
+    "ios:build": "./scripts/build-ios.sh && npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:run": "npm run ios:build && npm run ios:open"
   },
   "dependencies": {
     "@capacitor/cli": "^7.4.0",
+    "@capacitor/haptics": "^7.0.1",
+    "@capacitor/ios": "^7.4.0",
+    "@capacitor/local-notifications": "^7.0.1",
+    "@capacitor/status-bar": "^7.0.1",
     "@prisma/client": "^6.10.1",
     "@railway/cli": "^4.5.4",
     "katex": "^0.16.22",
