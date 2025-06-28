@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env*
+.git/
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+*.md
+scripts/test-db.ts
