@@ -1,67 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Alarm Prep
+
+A Progressive Web App (PWA) for GMAT and LSAT exam preparation through quiz alarms. Users must answer questions correctly to turn off their alarms, making studying a daily habit.
+
+## Features
+
+- **Quiz Alarms**: Set alarms that require answering exam questions to turn off
+- **Exam Types**: Support for GMAT and LSAT question types
+- **Question Categories**: 
+  - GMAT: Quantitative, Verbal, Data Insights
+  - LSAT: Reading Comprehension, Logical Reasoning
+- **Statistics**: Track your performance across different question types
+- **Settings**: Configure exam preferences and alarm settings
+- **PWA Ready**: Installable on mobile devices
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **Styling**: Tailwind CSS
+- **PWA**: next-pwa
+- **Mobile**: Capacitor (for future App Store deployment)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd AlarmPrep-main
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Start the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+### Available Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/                 # Next.js App Router
+│   ├── page.tsx        # Home page with alarm management
+│   ├── settings/       # Settings page
+│   ├── stats/          # Statistics page
+│   └── layout.tsx      # Root layout
+├── components/         # Reusable components
+│   └── BottomNav.tsx   # Bottom navigation
+└── globals.css         # Global styles
+```
 
-## Deployment
+## Usage
 
-### Deploy on Railway
+1. **First Time Setup**: Choose your exam type (GMAT or LSAT)
+2. **Create Alarms**: Tap the "+" button to set new quiz alarms
+3. **Configure Questions**: Select question types, categories, and difficulty
+4. **Track Progress**: View statistics in the Stats tab
+5. **Customize Settings**: Adjust preferences in the Settings tab
 
-1. **Install Railway CLI** (optional but recommended):
-   ```bash
-   npm install -g @railway/cli
-   ```
+## Development
 
-2. **Login to Railway**:
-   ```bash
-   railway login
-   ```
+The app is built as a PWA and can be installed on mobile devices. For iOS deployment, the project includes Capacitor configuration for future App Store submission.
 
-3. **Initialize Railway project**:
-   ```bash
-   railway init
-   ```
+## License
 
-4. **Deploy to Railway**:
-   ```bash
-   railway up
-   ```
-
-5. **Connect to GitHub** (for automatic deployments):
-   - Go to your Railway dashboard
-   - Select your project
-   - Go to Settings → GitHub
-   - Connect your GitHub repository
-   - Enable automatic deployments
-
-### Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License

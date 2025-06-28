@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import 'katex/dist/katex.min.css';
+import { BlockMath, InlineMath } from 'react-katex';
 
 const EXAMS = ["GMAT", "LSAT"] as const;
 const QUESTION_TYPES = {
@@ -26,6 +28,27 @@ const DIFFICULTIES = [
   { id: "intermediate", name: "Intermediate" },
   { id: "hard", name: "Hard" },
 ] as const;
+
+// Common LaTeX symbols for quick insertion
+const LATEX_SYMBOLS = [
+  { label: "Square Root", latex: "\\sqrt{}", description: "√" },
+  { label: "Fraction", latex: "\\frac{}{}", description: "fraction" },
+  { label: "Power", latex: "^", description: "x²" },
+  { label: "Subscript", latex: "_", description: "x₁" },
+  { label: "Plus/Minus", latex: "\\pm", description: "±" },
+  { label: "Times", latex: "\\times", description: "×" },
+  { label: "Divide", latex: "\\div", description: "÷" },
+  { label: "Equals", latex: "=", description: "=" },
+  { label: "Not Equal", latex: "\\neq", description: "≠" },
+  { label: "Less Than", latex: "<", description: "<" },
+  { label: "Greater Than", latex: ">", description: ">" },
+  { label: "Less Equal", latex: "\\leq", description: "≤" },
+  { label: "Greater Equal", latex: "\\geq", description: "≥" },
+  { label: "Pi", latex: "\\pi", description: "π" },
+  { label: "Infinity", latex: "\\infty", description: "∞" },
+  { label: "Sum", latex: "\\sum_{}^{}", description: "∑" },
+  { label: "Integral", latex: "\\int_{}^{}", description: "∫" },
+];
 
 type QuestionTypeID = typeof QUESTION_TYPES[keyof typeof QUESTION_TYPES][number]['id'];
 type Subcategory = typeof QUESTION_SUBCATEGORIES[keyof typeof QUESTION_SUBCATEGORIES][number];
@@ -97,6 +120,48 @@ export default function AdminPage() {
     setSubcategory(QUESTION_SUBCATEGORIES[newType as keyof typeof QUESTION_SUBCATEGORIES][0]);
   };
 
+  // Insert LaTeX symbol at cursor position
+  const insertLatexSymbol = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation') => {
+    const textarea = document.getElementById(`${target}-textarea`) as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = textarea.value;
+      
+      let newValue: string;
+      let newCursorPos: number;
+      
+      if (latex.includes('{}')) {
+        // For symbols with placeholders like \sqrt{}, \frac{}{}
+        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
+        newCursorPos = start + latex.indexOf('{}');
+      } else {
+        // For simple symbols
+        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
+        newCursorPos = start + latex.length;
+      }
+      
+      // Update the appropriate state
+      switch (target) {
+        case 'question':
+          setText(newValue);
+          break;
+        case 'answer':
+          setCorrectAnswer(newValue);
+          break;
+        case 'explanation':
+          setExplanation(newValue);
+          break;
+      }
+      
+      // Set cursor position after a short delay
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 10);
+    }
+  };
+
   // Add question handler (POST to API)
   const addQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +198,7 @@ export default function AdminPage() {
       setChoices(["", "", "", "", ""]);
       setDifficulty(DIFFICULTIES[0].id);
       setExplanation("");
+      alert("Question added successfully!");
     } catch (err: any) {
       setError(err.message || "Unknown error");
     } finally {
@@ -149,6 +215,8 @@ export default function AdminPage() {
 
   // Delete question
   const deleteQuestion = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this question?")) return;
+    
     setLoading(true);
     setError(null);
     try {
@@ -173,213 +241,403 @@ export default function AdminPage() {
     return typeMatch && difficultyMatch;
   });
 
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'text-green-600 bg-green-100';
+      case 'intermediate': return 'text-alarm-yellow bg-yellow-100';
+      case 'hard': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  // Helper function to render text with LaTeX
+  const renderTextWithLatex = (text: string) => {
+    if (!text) return null;
+    
+    // Split text by LaTeX delimiters
+    const parts = text.split(/(\\[a-zA-Z]+\{[^}]*\}|\\[a-zA-Z]+)/);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('\\')) {
+        try {
+          return <InlineMath key={index} math={part} />;
+        } catch (error) {
+          return <span key={index} className="text-red-500">{part}</span>;
+        }
+      }
+      return part;
+    });
+  };
+
   return (
-    <div className="p-6 max-w-4xl mx-auto text-gray-900">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900">Admin: Manage Questions</h1>
-      {loading && <div className="mb-4 text-blue-600">Loading...</div>}
-      {error && <div className="mb-4 text-red-600">{error}</div>}
-      
-      {/* Add Question Form */}
-      <form onSubmit={addQuestion} className="mb-6 bg-gray-50 p-4 rounded shadow">
-        <div className="grid grid-cols-1 gap-4">
-          {/* Exam Selection */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Exam</label>
-            <select
-              className="border p-2 rounded w-full text-gray-900"
-              value={exam}
-              onChange={(e) => handleExamChange(e.target.value)}
-            >
-              {EXAMS.map((ex) => (
-                <option key={ex} value={ex}>{ex}</option>
-              ))}
-            </select>
-          </div>
-          {/* Question Type Selection */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Question Type</label>
-            <select
-              className="border p-2 rounded w-full text-gray-900"
-              value={type}
-              onChange={(e) => handleTypeChange(e.target.value)}
-            >
-              {QUESTION_TYPES[exam as keyof typeof QUESTION_TYPES].map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-          {/* Subcategory Selection */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Subcategory</label>
-            <select
-              className="border p-2 rounded w-full text-gray-900"
-              value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value as Subcategory)}
-            >
-              {QUESTION_SUBCATEGORIES[type].map((sub) => (
-                <option key={sub} value={sub}>{sub}</option>
-              ))}
-            </select>
-          </div>
-          {/* Difficulty Selection */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Difficulty</label>
-            <select
-              className="border p-2 rounded w-full text-gray-900"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as DifficultyID)}
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-          {/* Question Text */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Question Text</label>
-            <textarea
-              className="border p-2 rounded w-full h-24 resize-none"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Enter your question here..."
-              required
-            />
-          </div>
-          {/* Correct Answer (First Choice) */}
-          <div>
-            <label className="font-semibold block mb-2 text-green-700 text-gray-900">
-              Correct Answer (Choice 1)
-            </label>
-            <input
-              className="border p-2 rounded w-full border-green-300 bg-green-50"
-              value={correctAnswer}
-              onChange={(e) => setCorrectAnswer(e.target.value)}
-              placeholder="Enter the correct answer..."
-              required
-            />
-          </div>
-          {/* Other Choices */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Other Choices</label>
-            <div className="grid grid-cols-1 gap-2">
-              {choices.slice(1).map((choice, index) => (
-                <input
-                  key={index + 1}
-                  className="border p-2 rounded"
-                  value={choice}
-                  onChange={(e) => updateChoice(index + 1, e.target.value)}
-                  placeholder={`Choice ${index + 2}...`}
-                  required
-                />
-              ))}
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
+          <h1 className="text-3xl font-bold text-alarm-black mb-2">Question Management</h1>
+          <p className="text-lg text-alarm-black/80">Manage LSAT and GMAT questions for your alarm app</p>
+        </div>
+
+        {loading && (
+          <div className="bg-alarm-blue-light border border-alarm-blue rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-alarm-blue"></div>
+              <span className="text-alarm-blue font-medium">Loading...</span>
             </div>
           </div>
-          {/* Explanation */}
-          <div>
-            <label className="font-semibold block mb-2 text-gray-900">Explanation</label>
-            <textarea
-              className="border p-2 rounded w-full h-24 resize-none"
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              placeholder="Enter an explanation for the answer (optional)"
-            />
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-red-800 font-medium">{error}</span>
+            </div>
           </div>
-          <button 
-            type="submit" 
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Add Question
-          </button>
-        </div>
-      </form>
+        )}
+        
+        {/* Add Question Form - Always Visible */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
+          <h2 className="text-xl font-semibold text-alarm-black mb-4">Add New Question</h2>
+          <form onSubmit={addQuestion} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Exam Selection */}
+              <div>
+                <label className="block text-sm font-medium text-alarm-black mb-2">Exam</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  value={exam}
+                  onChange={(e) => handleExamChange(e.target.value)}
+                >
+                  {EXAMS.map((ex) => (
+                    <option key={ex} value={ex}>{ex}</option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Filter by Type */}
-      <div className="mb-4 flex items-center gap-2">
-        <span className="font-semibold text-gray-900">Filter by type:</span>
-        <select
-          className="border p-2 rounded text-gray-900"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option value="">All</option>
-          {Object.values(QUESTION_TYPES).flat().map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-      </div>
+              {/* Question Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-alarm-black mb-2">Question Type</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  value={type}
+                  onChange={(e) => handleTypeChange(e.target.value)}
+                >
+                  {QUESTION_TYPES[exam as keyof typeof QUESTION_TYPES].map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Filter by Difficulty */}
-      <div className="mb-4 flex items-center gap-2">
-        <span className="font-semibold text-gray-900">Filter by difficulty:</span>
-        <select
-          className="border p-2 rounded text-gray-900"
-          value={difficultyFilter}
-          onChange={(e) => setDifficultyFilter(e.target.value)}
-        >
-          <option value="">All</option>
-          {DIFFICULTIES.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
-      </div>
+              {/* Subcategory Selection */}
+              <div>
+                <label className="block text-sm font-medium text-alarm-black mb-2">Subcategory</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  value={subcategory}
+                  onChange={(e) => setSubcategory(e.target.value as Subcategory)}
+                >
+                  {QUESTION_SUBCATEGORIES[type].map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Questions List */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b text-gray-900">Exam</th>
-              <th className="py-2 px-4 border-b text-gray-900">Type</th>
-              <th className="py-2 px-4 border-b text-gray-900">Subcategory</th>
-              <th className="py-2 px-4 border-b text-gray-900">Question</th>
-              <th className="py-2 px-4 border-b text-gray-900">Correct Answer</th>
-              <th className="py-2 px-4 border-b text-gray-900">All Choices</th>
-              <th className="py-2 px-4 border-b text-gray-900">Difficulty</th>
-              <th className="py-2 px-4 border-b text-gray-900">Explanation</th>
-              <th className="py-2 px-4 border-b text-gray-900">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedQuestions.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-4 text-gray-500">
-                  No questions found. Add some questions above!
-                </td>
-              </tr>
-            ) : (
-              displayedQuestions.map((q) => (
-                <tr key={q.id}>
-                  <td className="py-2 px-4 border-b">{q.exam}</td>
-                  <td className="py-2 px-4 border-b">{QUESTION_TYPES[q.exam as keyof typeof QUESTION_TYPES].find(t => t.id === q.type)?.name || q.type}</td>
-                  <td className="py-2 px-4 border-b">{q.subcategory}</td>
-                  <td className="py-2 px-4 border-b max-w-xs">{q.text}</td>
-                  <td className="py-2 px-4 border-b text-green-700 font-semibold">
-                    {q.correctAnswer}
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    <div className="text-sm">
-                      {q.choices.map((choice, index) => (
-                        <div key={index} className={index === 0 ? "text-green-700 font-semibold" : ""}>
-                          {index + 1}. {choice}
-                        </div>
-                      ))}
+              {/* Difficulty Selection */}
+              <div>
+                <label className="block text-sm font-medium text-alarm-black mb-2">Difficulty</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as DifficultyID)}
+                >
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Question Text with LaTeX Support */}
+            <div>
+              <label className="block text-sm font-medium text-alarm-black mb-2">Question Text</label>
+              
+              {/* LaTeX Help Section */}
+              <div className="mb-3 p-3 bg-alarm-blue-light/20 rounded-lg border border-alarm-blue/20">
+                <h4 className="text-sm font-medium text-alarm-black mb-2">💡 Math Symbols Help</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-3">
+                  {LATEX_SYMBOLS.map((symbol, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => insertLatexSymbol(symbol.latex, 'question')}
+                      className="text-xs bg-white border border-gray-300 rounded px-2 py-1 hover:bg-gray-50 transition-colors"
+                      title={`${symbol.label}: ${symbol.description}`}
+                    >
+                      {symbol.description}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-alarm-black/70">
+                  <strong>Examples:</strong> x^2 → x², \sqrt{5} → √5, \frac{1}{2} → ½
+                </p>
+              </div>
+
+              <textarea
+                id="question-textarea"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Enter your question here... Use LaTeX for math: x^2, \sqrt{5}, \frac{1}{2}"
+                required
+              />
+
+              {/* Live Preview */}
+              {text && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
+                  <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
+                  <div className="text-alarm-black/80">
+                    {renderTextWithLatex(text)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Answer Choices */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Correct Answer */}
+              <div>
+                <label className="block text-sm font-medium text-green-700 mb-2">
+                  ✓ Correct Answer
+                </label>
+                
+                {/* LaTeX Help for Answer */}
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => insertLatexSymbol("\\sqrt{}", 'answer')}
+                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors mr-1"
+                  >
+                    √
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertLatexSymbol("\\frac{}{}", 'answer')}
+                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors mr-1"
+                  >
+                    fraction
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertLatexSymbol("^", 'answer')}
+                    className="text-xs bg-green-100 border border-green-300 rounded px-2 py-1 hover:bg-green-200 transition-colors"
+                  >
+                    x²
+                  </button>
+                </div>
+
+                <input
+                  id="answer-textarea"
+                  className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
+                  value={correctAnswer}
+                  onChange={(e) => setCorrectAnswer(e.target.value)}
+                  placeholder="Enter the correct answer..."
+                  required
+                />
+
+                {/* Answer Preview */}
+                {correctAnswer && (
+                  <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+                    <span className="text-xs text-green-700 font-medium">Preview: </span>
+                    <span className="text-green-800">{renderTextWithLatex(correctAnswer)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Other Choices */}
+              <div>
+                <label className="block text-sm font-medium text-alarm-black mb-2">Other Choices</label>
+                <div className="space-y-2">
+                  {choices.slice(1).map((choice, index) => (
+                    <div key={index + 1}>
+                      <div className="mb-1">
+                        <button
+                          type="button"
+                          onClick={() => insertLatexSymbol("\\sqrt{}", 'choice')}
+                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors mr-1"
+                        >
+                          √
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertLatexSymbol("\\frac{}{}", 'choice')}
+                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors mr-1"
+                        >
+                          fraction
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertLatexSymbol("^", 'choice')}
+                          className="text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-gray-200 transition-colors"
+                        >
+                          x²
+                        </button>
+                      </div>
+                      <input
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                        value={choice}
+                        onChange={(e) => updateChoice(index + 1, e.target.value)}
+                        placeholder={`Choice ${index + 2}...`}
+                        required
+                      />
                     </div>
-                  </td>
-                  <td className="py-2 px-4 border-b">{DIFFICULTIES.find(d => d.id === q.difficulty)?.name || q.difficulty}</td>
-                  <td className="py-2 px-4 border-b max-w-xs whitespace-pre-line">{q.explanation}</td>
-                  <td className="py-2 px-4 border-b">
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            <div>
+              <label className="block text-sm font-medium text-alarm-black mb-2">Explanation (Optional)</label>
+              <textarea
+                id="explanation-textarea"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                value={explanation}
+                onChange={(e) => setExplanation(e.target.value)}
+                placeholder="Enter an explanation for the answer..."
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              className="bg-alarm-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={loading}
+            >
+              {loading ? 'Adding...' : 'Add Question'}
+            </button>
+          </form>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-alarm-black">Filter by type:</span>
+              <select
+                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="">All Types</option>
+                {Object.values(QUESTION_TYPES).flat().map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-alarm-black">Filter by difficulty:</span>
+              <select
+                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+              >
+                <option value="">All Difficulties</option>
+                {DIFFICULTIES.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-alarm-black/70">
+                Total Questions: {displayedQuestions.length}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Questions List */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-alarm-black/10">
+          <div className="px-6 py-4 border-b border-alarm-black/10">
+            <h3 className="text-lg font-semibold text-alarm-black">Questions</h3>
+          </div>
+          
+          {displayedQuestions.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-alarm-black">No questions found</h3>
+              <p className="mt-1 text-sm text-alarm-black/70">Add your first question using the form above.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-alarm-black/10">
+              {displayedQuestions.map((q) => (
+                <div key={q.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-alarm-blue text-white">
+                        {q.exam}
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-alarm-blue-light text-alarm-blue">
+                        {QUESTION_TYPES[q.exam as keyof typeof QUESTION_TYPES].find(t => t.id === q.type)?.name || q.type}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getDifficultyColor(q.difficulty)}`}>
+                        {DIFFICULTIES.find(d => d.id === q.difficulty)?.name || q.difficulty}
+                      </span>
+                    </div>
                     <button
                       onClick={() => deleteQuestion(q.id)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                      title="Delete question"
                     >
-                      Delete
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-medium text-alarm-black mb-1">Question:</h4>
+                      <p className="text-alarm-black/80 bg-gray-50 p-3 rounded-lg">
+                        {renderTextWithLatex(q.text)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium text-alarm-black mb-2">Answer Choices:</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {q.choices.map((choice, index) => (
+                          <div key={index} className={`p-2 rounded-lg border ${index === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-alarm-black'}`}>
+                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {renderTextWithLatex(choice)}
+                            {index === 0 && <span className="ml-2 text-xs font-medium">✓ Correct</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {q.explanation && (
+                      <div>
+                        <h4 className="font-medium text-alarm-black mb-1">Explanation:</h4>
+                        <p className="text-alarm-black/70 bg-alarm-blue-light/20 p-3 rounded-lg text-sm">
+                          {renderTextWithLatex(q.explanation)}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-alarm-black/50 pt-2 border-t border-alarm-black/10">
+                      Subcategory: {q.subcategory} • Created: {new Date(q.createdAt || '').toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
