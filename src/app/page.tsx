@@ -258,21 +258,37 @@ export default function Home() {
   const handleTestAlarm = async () => {
     console.log('Test alarm button clicked!');
     console.log('Current examType:', examType);
+    console.log('Current selectedQuestionType:', selectedQuestionType);
+    console.log('Current selectedDifficulty:', selectedDifficulty);
     console.log('Available questionTypes:', questionTypes);
     
     try {
-      // Determine the correct exam and type to use
+      // Use the current user selections, with fallbacks
       const currentExamType = examType || 'LSAT'; // Default to LSAT if not set
-      const currentQuestionType = examType === 'GMAT' ? 'quantitative' : 'reading'; // Use correct question type
+      const currentQuestionType = selectedQuestionType || (examType === 'GMAT' ? 'quantitative' : 'reading');
+      const currentDifficulty = selectedDifficulty || 'easy';
       
-      console.log('Using exam:', currentExamType, 'type:', currentQuestionType);
+      console.log('Using exam:', currentExamType, 'type:', currentQuestionType, 'difficulty:', currentDifficulty);
       
-      // Get a test question with appropriate filters
-      const testQuestion = await dataService.getRandomQuestion({
-        exam: currentExamType,
-        type: currentQuestionType,
-        difficulty: 'easy'
-      });
+      // Build filter based on user selections
+      const filter: any = {
+        exam: currentExamType
+      };
+      
+      // Only add type filter if a specific type is selected (not "random")
+      if (currentQuestionType && currentQuestionType !== 'random') {
+        filter.type = currentQuestionType;
+      }
+      
+      // Only add difficulty filter if a specific difficulty is selected
+      if (currentDifficulty && currentDifficulty !== 'random') {
+        filter.difficulty = currentDifficulty;
+      }
+      
+      console.log('Final filter:', filter);
+      
+      // Get a test question with the user's current selections
+      const testQuestion = await dataService.getRandomQuestion(filter);
 
       console.log('Test question retrieved:', testQuestion);
 

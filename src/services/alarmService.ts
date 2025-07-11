@@ -132,18 +132,6 @@ class AlarmService {
       if (day === 0 && scheduleDate <= now) continue;
 
       try {
-        // Get a question for this alarm
-        const question = await dataService.getRandomQuestion({
-          exam: alarm.examType,
-          type: alarm.questionType,
-          difficulty: alarm.difficulty
-        });
-
-        if (!question) {
-          console.error('No question found for alarm criteria');
-          continue;
-        }
-
         const notificationId = parseInt(`${alarm.id}${day.toString().padStart(2, '0')}`);
         
         console.log(`Scheduling notification ${notificationId} for ${scheduleDate.toISOString()}`);
@@ -157,8 +145,9 @@ class AlarmService {
             sound: 'default',
             extra: {
               alarmId: alarm.id,
-              questionId: question.id,
               examType: alarm.examType,
+              questionType: alarm.questionType,
+              difficulty: alarm.difficulty,
               isAlarmNotification: true
             }
           }]
@@ -192,19 +181,22 @@ class AlarmService {
   // Handle when alarm notification is triggered
   private async handleAlarmTrigger(notification: LocalNotificationSchema) {
     try {
-      const { alarmId, questionId, examType } = notification.extra || {};
+      const { alarmId, examType, questionType, difficulty } = notification.extra || {};
       
-      if (!alarmId || !questionId) {
+      if (!alarmId || !examType || !questionType || !difficulty) {
         console.error('Invalid alarm notification data');
         return;
       }
 
-      // Get the question
-      const questions = await dataService.getQuestions();
-      const question = questions.find(q => q.id === questionId);
+      // Get a fresh question based on the alarm preferences
+      const question = await dataService.getRandomQuestion({
+        exam: examType,
+        type: questionType,
+        difficulty: difficulty
+      });
       
       if (!question) {
-        console.error('Question not found for alarm');
+        console.error('No question found for alarm criteria:', { examType, questionType, difficulty });
         return;
       }
 

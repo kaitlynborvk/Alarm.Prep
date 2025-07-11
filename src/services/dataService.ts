@@ -42,6 +42,7 @@ class DataService {
 
   // Get questions - try API first, fallback to local storage
   async getQuestions(filter?: QuestionFilter): Promise<Question[]> {
+    console.log('getQuestions called with filter:', filter);
     try {
       // In static export mode, skip API calls
       if (process.env.NEXT_OUTPUT === 'export') {
@@ -52,9 +53,14 @@ class DataService {
         const response = await fetch('/api/questions');
         if (response.ok) {
           const questions = await response.json();
+          console.log('getQuestions - API returned', questions.length, 'questions');
+          console.log('getQuestions - Sample from API:', questions.slice(0, 2).map((q: Question) => ({ id: q.id, exam: q.exam, type: q.type })));
+          
           // Cache questions locally
           this.cacheQuestions(questions);
-          return this.filterQuestions(questions, filter);
+          const filtered = this.filterQuestions(questions, filter);
+          console.log('getQuestions - After filtering:', filtered.length, 'questions');
+          return filtered;
         }
       }
     } catch (error) {
@@ -68,10 +74,19 @@ class DataService {
   // Get random question based on criteria
   async getRandomQuestion(filter?: QuestionFilter): Promise<Question | null> {
     const questions = await this.getQuestions(filter);
-    if (questions.length === 0) return null;
+    console.log('getRandomQuestion - Total questions retrieved:', questions.length);
+    console.log('getRandomQuestion - Filter applied:', filter);
+    console.log('getRandomQuestion - Sample questions:', questions.slice(0, 3).map(q => ({ id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty })));
+    
+    if (questions.length === 0) {
+      console.log('No questions found after filtering');
+      return null;
+    }
     
     const randomIndex = Math.floor(Math.random() * questions.length);
-    return questions[randomIndex];
+    const selectedQuestion = questions[randomIndex];
+    console.log('getRandomQuestion - Selected question:', { id: selectedQuestion.id, exam: selectedQuestion.exam, type: selectedQuestion.type });
+    return selectedQuestion;
   }
 
   // Cache questions in local storage
@@ -117,7 +132,7 @@ class DataService {
       {
         id: 1,
         exam: 'GMAT',
-        type: 'Quantitative',
+        type: 'quantitative',
         subcategory: 'Problem Solving',
         text: 'If $3x + 5 = 20$, what is the value of $x$?',
         correctAnswer: '$x = 5$',
@@ -128,7 +143,7 @@ class DataService {
       {
         id: 2,
         exam: 'GMAT',
-        type: 'Quantitative',
+        type: 'quantitative',
         subcategory: 'Problem Solving',
         text: 'What is the value of $x^2 + 2x - 8$ when $x = 3$?',
         correctAnswer: '$7$',
@@ -139,7 +154,7 @@ class DataService {
       {
         id: 3,
         exam: 'LSAT',
-        type: 'Logical Reasoning',
+        type: 'logical',
         subcategory: 'Strengthen',
         text: 'Which of the following would most strengthen the argument?',
         correctAnswer: 'Option A',
