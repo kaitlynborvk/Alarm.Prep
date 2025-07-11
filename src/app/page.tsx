@@ -258,12 +258,19 @@ export default function Home() {
   const handleTestAlarm = async () => {
     console.log('Test alarm button clicked!');
     console.log('Current examType:', examType);
+    console.log('Available questionTypes:', questionTypes);
     
     try {
-      // Get a test question
+      // Determine the correct exam and type to use
+      const currentExamType = examType || 'LSAT'; // Default to LSAT if not set
+      const currentQuestionType = examType === 'GMAT' ? 'quantitative' : 'reading'; // Use correct question type
+      
+      console.log('Using exam:', currentExamType, 'type:', currentQuestionType);
+      
+      // Get a test question with appropriate filters
       const testQuestion = await dataService.getRandomQuestion({
-        exam: examType || 'GMAT',
-        type: 'Quantitative',
+        exam: currentExamType,
+        type: currentQuestionType,
         difficulty: 'easy'
       });
 
