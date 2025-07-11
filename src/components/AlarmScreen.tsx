@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import { AlarmInstance, alarmService } from '@/services/alarmService';
+import { userStatsService } from '@/services/userStatsService';
 
 interface AlarmScreenProps {
   alarmInstance: AlarmInstance;
   onDismiss: () => void;
+  isTestMode?: boolean;
 }
 
-export default function AlarmScreen({ alarmInstance, onDismiss }: AlarmScreenProps) {
+export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = false }: AlarmScreenProps) {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -73,6 +75,18 @@ export default function AlarmScreen({ alarmInstance, onDismiss }: AlarmScreenPro
       
       setIsCorrect(correct);
       setShowResult(true);
+
+      // Record the question attempt for performance stats
+      userStatsService.recordQuestionAttempt({
+        questionId: question.id,
+        userAnswer: selectedAnswer,
+        isCorrect: correct,
+        timeSpent: timeElapsed,
+        source: isTestMode ? 'test' : 'alarm',
+        questionType: question.type,
+        difficulty: question.difficulty,
+        exam: question.exam
+      });
 
       if (correct) {
         // Auto-dismiss after showing success

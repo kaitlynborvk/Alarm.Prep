@@ -29,6 +29,7 @@ const sampleQuestions = [
 
 export default function Home() {
   const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false); // Track if we're in test mode
   const [showOnboardingModal, setShowOnboardingModal] = useState(true);
   const [selectedTime, setSelectedTime] = useState("06:00");
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -125,7 +126,8 @@ export default function Home() {
 
   const lsatQuestionTypes = [
     { id: "reading", name: "Reading Comprehension" },
-    { id: "logical", name: "Logical Reasoning" }
+    { id: "logical", name: "Logical Reasoning" },
+    { id: "games", name: "Logic Games" }
   ];
 
   const questionTypes = examType === "GMAT" ? gmatQuestionTypes : lsatQuestionTypes;
@@ -215,6 +217,111 @@ export default function Home() {
     }
 
     try {
+      if (isTestMode) {
+        // Test mode: Show alarm screen immediately with a question
+        console.log('Test mode: Creating immediate alarm with current selections');
+        console.log('User selections:', {
+          examType,
+          selectedQuestionType,
+          selectedDifficulty
+        });
+
+        // Validate required fields
+        if (!examType) {
+          console.error('Missing examType for test mode');
+          alert('Please select an exam type first (GMAT or LSAT)');
+          return;
+        }
+
+        if (!selectedQuestionType) {
+          console.error('Missing selectedQuestionType for test mode');
+          alert('Please select a question type');
+          return;
+        }
+        
+        // Build filter based on user selections
+        const filter: any = {
+          exam: examType
+        };
+        
+        // Only add type filter if a specific type is selected (not "random")
+        if (selectedQuestionType && selectedQuestionType !== 'random') {
+          filter.type = selectedQuestionType;
+        }
+        
+        // Only add difficulty filter if a specific difficulty is selected
+        if (selectedDifficulty && selectedDifficulty !== 'random') {
+          filter.difficulty = selectedDifficulty;
+        }
+        
+        console.log('Test mode filter:', filter);
+        
+        // Get a test question with the user's current selections
+        console.log('About to call dataService.getRandomQuestion with filter:', filter);
+        let testQuestion = await dataService.getRandomQuestion(filter);
+        console.log('getRandomQuestion returned:', testQuestion ? { id: testQuestion.id, exam: testQuestion.exam, type: testQuestion.type } : 'null');
+
+        // If no question found with full filter, try with just exam type
+        if (!testQuestion && filter.type) {
+          console.log('No question found with type filter, trying with just exam...');
+          const fallbackFilter = { exam: filter.exam };
+          testQuestion = await dataService.getRandomQuestion(fallbackFilter);
+          console.log('Fallback question:', testQuestion ? { id: testQuestion.id, exam: testQuestion.exam, type: testQuestion.type } : 'null');
+        }
+
+        // If still no question, try without any filter
+        if (!testQuestion) {
+          console.log('No question found with exam filter, trying without any filter...');
+          testQuestion = await dataService.getRandomQuestion();
+          console.log('No-filter question:', testQuestion ? { id: testQuestion.id, exam: testQuestion.exam, type: testQuestion.type } : 'null');
+        }
+
+        if (testQuestion) {
+          const testAlarmInstance: AlarmInstance = {
+            alarmId: 9999, // Test alarm ID
+            scheduledTime: new Date(),
+            question: testQuestion,
+            isActive: true
+          };
+
+          console.log('Test mode: Creating alarm instance:', testAlarmInstance);
+
+          // Add to alarm service's active alarms for proper validation
+          alarmService.addTestAlarmInstance(testAlarmInstance);
+
+          setActiveAlarm(testAlarmInstance);
+          setShowAlarmScreen(true);
+          setShowAlarmModal(false);
+          setIsTestMode(false); // Reset test mode
+          
+          console.log('Test alarm screen should now be visible');
+        } else {
+          console.error('No test question found');
+          console.error('Debug info:', {
+            examType,
+            selectedQuestionType,
+            selectedDifficulty,
+            filter,
+            isOnline: navigator.onLine
+          });
+          
+          // Try to get all questions without filter to see what's available
+          const allQuestions = await dataService.getQuestions();
+          console.error('Available questions:', allQuestions.length);
+          console.error('Sample questions:', allQuestions.slice(0, 3).map(q => ({
+            id: q.id,
+            exam: q.exam,
+            type: q.type,
+            difficulty: q.difficulty
+          })));
+          
+          alert('No test question found with the selected criteria. Check console for details.');
+        }
+        
+        return;
+      }
+
+      // Normal mode: Create actual alarm
       // Create alarm using alarmService
       const alarmId = await alarmService.createAlarm({
         time: selectedTime,
@@ -254,69 +361,29 @@ export default function Home() {
     }
   };
 
-  // Test function to trigger an alarm immediately (for testing)
-  const handleTestAlarm = async () => {
-    console.log('Test alarm button clicked!');
-    console.log('Current examType:', examType);
-    console.log('Current selectedQuestionType:', selectedQuestionType);
-    console.log('Current selectedDifficulty:', selectedDifficulty);
-    console.log('Available questionTypes:', questionTypes);
+  // Test function to open alarm modal in test mode
+  const handleTestAlarm = () => {
+    console.log('Opening alarm modal in test mode');
+    console.log('Current state:', {
+      examType,
+      selectedQuestionType,
+      selectedDifficulty
+    });
     
-    try {
-      // Use the current user selections, with fallbacks
-      const currentExamType = examType || 'LSAT'; // Default to LSAT if not set
-      const currentQuestionType = selectedQuestionType || (examType === 'GMAT' ? 'quantitative' : 'reading');
-      const currentDifficulty = selectedDifficulty || 'easy';
-      
-      console.log('Using exam:', currentExamType, 'type:', currentQuestionType, 'difficulty:', currentDifficulty);
-      
-      // Build filter based on user selections
-      const filter: any = {
-        exam: currentExamType
-      };
-      
-      // Only add type filter if a specific type is selected (not "random")
-      if (currentQuestionType && currentQuestionType !== 'random') {
-        filter.type = currentQuestionType;
-      }
-      
-      // Only add difficulty filter if a specific difficulty is selected
-      if (currentDifficulty && currentDifficulty !== 'random') {
-        filter.difficulty = currentDifficulty;
-      }
-      
-      console.log('Final filter:', filter);
-      
-      // Get a test question with the user's current selections
-      const testQuestion = await dataService.getRandomQuestion(filter);
-
-      console.log('Test question retrieved:', testQuestion);
-
-      if (testQuestion) {
-        const testAlarmInstance: AlarmInstance = {
-          alarmId: 9999, // Test alarm ID
-          scheduledTime: new Date(),
-          question: testQuestion,
-          isActive: true
-        };
-
-        console.log('Creating test alarm instance:', testAlarmInstance);
-
-        // Add to alarm service's active alarms for proper validation
-        alarmService.addTestAlarmInstance(testAlarmInstance);
-
-        setActiveAlarm(testAlarmInstance);
-        setShowAlarmScreen(true);
-        
-        console.log('Test alarm screen should now be visible');
-      } else {
-        console.error('No test question found');
-        alert('No test question found. Check console for details.');
-      }
-    } catch (error) {
-      console.error('Failed to create test alarm:', error);
-      alert('Failed to create test alarm. Check console for details.');
+    setIsTestMode(true);
+    
+    // Set defaults for test mode if nothing is selected
+    if (!selectedQuestionType && examType) {
+      const defaultType = examType === "GMAT" ? "quantitative" : "reading";
+      console.log('Setting default question type:', defaultType);
+      setSelectedQuestionType(defaultType);
     }
+    if (!selectedDifficulty) {
+      console.log('Setting default difficulty: easy');
+      setSelectedDifficulty("easy");
+    }
+    
+    setShowAlarmModal(true);
   };
 
   // Test function to schedule a real notification (iOS testing)
@@ -380,9 +447,9 @@ export default function Home() {
               <button 
                 onClick={handleTestAlarm}
                 className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-medium"
-                title="Test alarm modal (immediate)"
+                title="Test question preview with current settings"
               >
-                Test Modal
+                Test Question
               </button>
               <button 
                 onClick={handleTestNotification}
@@ -532,45 +599,62 @@ export default function Home() {
         {showAlarmModal && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto"
-            onClick={() => setShowAlarmModal(false)}
+            onClick={() => {
+              setShowAlarmModal(false);
+              setIsTestMode(false); // Reset test mode when closing
+            }}
           >
             <div 
               className="flex items-start justify-center min-h-screen pt-12 px-4 pb-20"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-white rounded-lg p-6 max-w-md w-full border border-alarm-black/10">
-                <h2 className="text-2xl font-bold text-alarm-black mb-6 text-center">Set Alarm</h2>
+                <h2 className="text-2xl font-bold text-alarm-black mb-6 text-center">
+                  {isTestMode ? 'Test Question Settings' : 'Set Alarm'}
+                </h2>
+                
+                {isTestMode && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 text-center">
+                      Select your preferences to instantly preview a practice question without scheduling an alarm.
+                    </p>
+                  </div>
+                )}
                 
                 <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                    <div className="relative">
-                      <input 
-                        type="time"
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.target.value)}
-                        className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg text-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Days of the Week</label>
-                    <div className="flex justify-between">
-                      {daysOfWeek.map((day, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleDayToggle(index)}
-                          className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
-                            selectedDays[index]
-                              ? 'bg-alarm-blue text-white'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {day}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  {!isTestMode && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                        <div className="relative">
+                          <input 
+                            type="time"
+                            value={selectedTime}
+                            onChange={(e) => setSelectedTime(e.target.value)}
+                            className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg text-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Days of the Week</label>
+                        <div className="flex justify-between">
+                          {daysOfWeek.map((day, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleDayToggle(index)}
+                              className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
+                                selectedDays[index]
+                                  ? 'bg-alarm-blue text-white'
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Test Section</label>
                     <div className="space-y-2">
@@ -624,24 +708,29 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ringtone</label>
-                    <select
-                      value={selectedRingtone}
-                      onChange={(e) => setSelectedRingtone(e.target.value)}
-                      className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
-                    >
-                      {ringtones.map((ringtone) => (
-                        <option key={ringtone.id} value={ringtone.id}>{ringtone.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {!isTestMode && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Ringtone</label>
+                      <select
+                        value={selectedRingtone}
+                        onChange={(e) => setSelectedRingtone(e.target.value)}
+                        className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
+                      >
+                        {ringtones.map((ringtone) => (
+                          <option key={ringtone.id} value={ringtone.id}>{ringtone.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Modal Actions */}
                 <div className="flex justify-end space-x-4 mt-6 pt-4 border-t border-gray-200">
                   <button 
-                    onClick={() => setShowAlarmModal(false)}
+                    onClick={() => {
+                      setShowAlarmModal(false);
+                      setIsTestMode(false); // Reset test mode when canceling
+                    }}
                     className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
                   >
                     Cancel
@@ -650,7 +739,7 @@ export default function Home() {
                     onClick={handleSetAlarm}
                     className="px-6 py-2 bg-alarm-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Set Alarm
+                    {isTestMode ? 'Start Test' : 'Set Alarm'}
                   </button>
                 </div>
               </div>
@@ -665,6 +754,7 @@ export default function Home() {
       {showAlarmScreen && activeAlarm && (
         <AlarmScreen 
           alarmInstance={activeAlarm}
+          isTestMode={isTestMode}
           onDismiss={() => {
             setShowAlarmScreen(false);
             setActiveAlarm(null);

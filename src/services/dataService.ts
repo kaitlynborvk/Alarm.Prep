@@ -23,6 +23,21 @@ class DataService {
   private isOnline = true;
   private localStorageKey = 'alarmprep_questions';
 
+  // Map UI question type IDs to database values
+  private mapQuestionType(uiType: string): string {
+    const typeMap: { [key: string]: string } = {
+      'quantitative': 'Quantitative',
+      'verbal': 'Verbal', 
+      'data': 'Data Insights',
+      'logical': 'Logical Reasoning',
+      'reading': 'Reading Comprehension',
+      'games': 'Logic Games'
+    };
+    const mapped = typeMap[uiType.toLowerCase()] || uiType;
+    console.log('Type mapping:', uiType, '→', mapped);
+    return mapped;
+  }
+
   constructor() {
     // Check if we're in a browser environment
     if (typeof window !== 'undefined') {
@@ -53,13 +68,11 @@ class DataService {
         const response = await fetch('/api/questions');
         if (response.ok) {
           const questions = await response.json();
-          console.log('getQuestions - API returned', questions.length, 'questions');
-          console.log('getQuestions - Sample from API:', questions.slice(0, 2).map((q: Question) => ({ id: q.id, exam: q.exam, type: q.type })));
+          console.log('Loaded', questions.length, 'questions from database');
           
           // Cache questions locally
           this.cacheQuestions(questions);
           const filtered = this.filterQuestions(questions, filter);
-          console.log('getQuestions - After filtering:', filtered.length, 'questions');
           return filtered;
         }
       }
@@ -74,9 +87,12 @@ class DataService {
   // Get random question based on criteria
   async getRandomQuestion(filter?: QuestionFilter): Promise<Question | null> {
     const questions = await this.getQuestions(filter);
+    console.log('getRandomQuestion - Filter used:', filter);
     console.log('getRandomQuestion - Total questions retrieved:', questions.length);
-    console.log('getRandomQuestion - Filter applied:', filter);
-    console.log('getRandomQuestion - Sample questions:', questions.slice(0, 3).map(q => ({ id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty })));
+    console.log('getRandomQuestion - All questions:', questions.map(q => ({ 
+      id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty, 
+      text: q.text.substring(0, 30) + '...' 
+    })));
     
     if (questions.length === 0) {
       console.log('No questions found after filtering');
@@ -85,7 +101,10 @@ class DataService {
     
     const randomIndex = Math.floor(Math.random() * questions.length);
     const selectedQuestion = questions[randomIndex];
-    console.log('getRandomQuestion - Selected question:', { id: selectedQuestion.id, exam: selectedQuestion.exam, type: selectedQuestion.type });
+    console.log('getRandomQuestion - Random index:', randomIndex, 'of', questions.length);
+    console.log('getRandomQuestion - Selected question:', { 
+      id: selectedQuestion.id, exam: selectedQuestion.exam, type: selectedQuestion.type, difficulty: selectedQuestion.difficulty 
+    });
     return selectedQuestion;
   }
 
@@ -118,12 +137,26 @@ class DataService {
   private filterQuestions(questions: Question[], filter?: QuestionFilter): Question[] {
     if (!filter) return questions;
 
-    return questions.filter(question => {
-      if (filter.exam && question.exam !== filter.exam) return false;
-      if (filter.type && question.type !== filter.type) return false;
-      if (filter.difficulty && question.difficulty !== filter.difficulty) return false;
+    console.log('Filtering', questions.length, 'questions with filter:', filter);
+
+    const filtered = questions.filter(question => {
+      if (filter.exam && question.exam.toLowerCase() !== filter.exam.toLowerCase()) return false;
+      
+      if (filter.type) {
+        const mappedType = this.mapQuestionType(filter.type);
+        if (question.type !== mappedType) return false;
+      }
+      
+      if (filter.difficulty && question.difficulty.toLowerCase() !== filter.difficulty.toLowerCase()) return false;
       return true;
     });
+
+    console.log('Filter result:', filtered.length, 'questions match criteria');
+    console.log('Matching questions:', filtered.map(q => ({ 
+      id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty 
+    })));
+
+    return filtered;
   }
 
   // Fallback questions when no cache is available

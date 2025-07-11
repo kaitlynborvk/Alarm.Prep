@@ -19,4 +19,62 @@ model Question {
   explanation   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  
+  // Relations
+  userAnswers   UserAnswer[]
 } 
+
+model User {
+  id          String   @id @default(cuid())
+  deviceId    String   @unique  // For anonymous users, use device ID
+  examType    String   // GMAT or LSAT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userAnswers UserAnswer[]
+  stats       UserStats?
+}
+
+model UserAnswer {
+  id              Int      @id @default(autoincrement())
+  userId          String
+  questionId      Int
+  userAnswer      String
+  isCorrect       Boolean
+  timeSpent       Int      // Time in seconds
+  answeredAt      DateTime @default(now())
+  source          String   // "alarm", "test", "practice"
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, questionId, answeredAt])
+}
+
+model UserStats {
+  id                    Int      @id @default(autoincrement())
+  userId                String   @unique
+  totalQuestions        Int      @default(0)
+  correctAnswers        Int      @default(0)
+  averageTimePerQuestion Float   @default(0)
+  currentStreak         Int      @default(0)
+  longestStreak         Int      @default(0)
+  lastAnsweredAt        DateTime?
+  updatedAt             DateTime @updatedAt
+  
+  // Performance by difficulty
+  easyCorrect           Int      @default(0)
+  easyTotal             Int      @default(0)
+  intermediateCorrect   Int      @default(0)
+  intermediateTotal     Int      @default(0)
+  hardCorrect           Int      @default(0)
+  hardTotal             Int      @default(0)
+  
+  // Performance by question type (JSON for flexibility)
+  typeStats             Json     @default("{}")
+  
+  // Relations
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
