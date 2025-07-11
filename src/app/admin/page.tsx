@@ -1,8 +1,60 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import 'katex/dist/katex.min.css';
-import { BlockMath, InlineMath } from 'react-katex';
+
+// Simple text formatter for LaTeX preview (converts common LaTeX to readable text)
+const formatLatexPreview = (text: string): string => {
+  if (!text) return '';
+  
+  return text
+    // Convert common LaTeX symbols to Unicode equivalents
+    .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
+    .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)') // Fractions: \frac{a}{b} -> (a)/(b)
+    .replace(/\\sqrt\{([^}]+)\}/g, '√($1)') // Square root: \sqrt{x} -> √(x)
+    .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
+      // Superscripts: x^2 -> x², x^{10} -> x¹⁰
+      const cleanExp = exp.replace(/[{}]/g, '');
+      const superscriptMap: { [key: string]: string } = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+      };
+      return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
+    })
+    .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
+      // Subscripts: x_1 -> x₁, x_{10} -> x₁₀
+      const cleanSub = sub.replace(/[{}]/g, '');
+      const subscriptMap: { [key: string]: string } = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+      };
+      return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
+    })
+    .replace(/\\pi/g, 'π')
+    .replace(/\\alpha/g, 'α')
+    .replace(/\\beta/g, 'β')
+    .replace(/\\gamma/g, 'γ')
+    .replace(/\\delta/g, 'δ')
+    .replace(/\\theta/g, 'θ')
+    .replace(/\\lambda/g, 'λ')
+    .replace(/\\mu/g, 'μ')
+    .replace(/\\sigma/g, 'σ')
+    .replace(/\\phi/g, 'φ')
+    .replace(/\\omega/g, 'ω')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\pm/g, '±')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\neq/g, '≠')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\sum/g, '∑')
+    .replace(/\\int/g, '∫')
+    .replace(/\\partial/g, '∂')
+    .replace(/\\nabla/g, '∇')
+    // Clean up any remaining backslashes
+    .replace(/\\/g, '');
+};
 
 const EXAMS = ["GMAT", "LSAT"] as const;
 const QUESTION_TYPES = {
@@ -123,8 +175,15 @@ export default function AdminPage() {
   };
 
   // Insert LaTeX symbol at cursor position
-  const insertLatexSymbol = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation') => {
-    const textarea = document.getElementById(`${target}-textarea`) as HTMLTextAreaElement;
+  const insertLatexSymbol = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+    let textarea: HTMLTextAreaElement | null = null;
+    
+    if (target === 'choice' && choiceIndex !== undefined) {
+      textarea = document.getElementById(`choice-${choiceIndex}-textarea`) as HTMLTextAreaElement;
+    } else {
+      textarea = document.getElementById(`${target}-textarea`) as HTMLTextAreaElement;
+    }
+    
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -153,6 +212,11 @@ export default function AdminPage() {
           break;
         case 'explanation':
           setExplanation(newValue);
+          break;
+        case 'choice':
+          if (choiceIndex !== undefined) {
+            updateChoice(choiceIndex + 1, newValue);
+          }
           break;
       }
       
@@ -255,23 +319,11 @@ export default function AdminPage() {
     }
   };
 
-  // Helper function to render text with LaTeX
+  // Helper function to render text with LaTeX support
   const renderTextWithLatex = (text: string) => {
     if (!text) return null;
-    
-    // Split text by LaTeX delimiters
-    const parts = text.split(/(\\[a-zA-Z]+\{[^}]*\}|\\[a-zA-Z]+)/);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('\\')) {
-        try {
-          return <InlineMath key={index} math={part} />;
-        } catch (error) {
-          return <span key={index} className="text-red-500">{part}</span>;
-        }
-      }
-      return part;
-    });
+    const formatted = formatLatexPreview(text);
+    return <span>{formatted}</span>;
   };
 
   return (
@@ -414,7 +466,7 @@ export default function AdminPage() {
               {text && (
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
                   <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
-                  <div className="text-alarm-black/80">
+                  <div className="text-gray-900 font-medium">
                     {renderTextWithLatex(text)}
                   </div>
                 </div>
@@ -481,33 +533,42 @@ export default function AdminPage() {
                       <div className="mb-1">
                         <button
                           type="button"
-                          onClick={() => insertLatexSymbol("\\sqrt{}", 'choice')}
+                          onClick={() => insertLatexSymbol("\\sqrt{}", 'choice', index)}
                           className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
                         >
                           √
                         </button>
                         <button
                           type="button"
-                          onClick={() => insertLatexSymbol("\\frac{}{}", 'choice')}
+                          onClick={() => insertLatexSymbol("\\frac{}{}", 'choice', index)}
                           className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
                         >
                           fraction
                         </button>
                         <button
                           type="button"
-                          onClick={() => insertLatexSymbol("^", 'choice')}
+                          onClick={() => insertLatexSymbol("^", 'choice', index)}
                           className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
                         >
                           x²
                         </button>
                       </div>
                       <input
+                        id={`choice-${index}-textarea`}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                         value={choice}
                         onChange={(e) => updateChoice(index + 1, e.target.value)}
                         placeholder={`Choice ${index + 2}...`}
                         required
                       />
+                      
+                      {/* Choice Preview */}
+                      {choice && (
+                        <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                          <span className="text-xs text-gray-700 font-medium">Preview: </span>
+                          <span className="text-gray-900 font-medium">{renderTextWithLatex(choice)}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -517,6 +578,32 @@ export default function AdminPage() {
             {/* Explanation */}
             <div>
               <label className="block text-sm font-medium text-alarm-black mb-2">Explanation (Optional)</label>
+              
+              {/* LaTeX Help for Explanation */}
+              <div className="mb-2">
+                <button
+                  type="button"
+                  onClick={() => insertLatexSymbol("\\sqrt{}", 'explanation')}
+                  className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 mr-2 shadow-sm text-blue-800"
+                >
+                  √
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertLatexSymbol("\\frac{}{}", 'explanation')}
+                  className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 mr-2 shadow-sm text-blue-800"
+                >
+                  fraction
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertLatexSymbol("^", 'explanation')}
+                  className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 shadow-sm text-blue-800"
+                >
+                  x²
+                </button>
+              </div>
+              
               <textarea
                 id="explanation-textarea"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
@@ -524,6 +611,16 @@ export default function AdminPage() {
                 onChange={(e) => setExplanation(e.target.value)}
                 placeholder="Enter an explanation for the answer..."
               />
+              
+              {/* Explanation Preview */}
+              {explanation && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
+                  <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
+                  <div className="text-gray-900 font-medium">
+                    {renderTextWithLatex(explanation)}
+                  </div>
+                </div>
+              )}
             </div>
 
             <button 
@@ -619,7 +716,7 @@ export default function AdminPage() {
                   <div className="space-y-3">
                     <div>
                       <h4 className="font-medium text-alarm-black mb-1">Question:</h4>
-                      <p className="text-alarm-black/80 bg-gray-50 p-3 rounded-lg">
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg font-medium">
                         {renderTextWithLatex(q.text)}
                       </p>
                     </div>
@@ -628,8 +725,8 @@ export default function AdminPage() {
                       <h4 className="font-medium text-alarm-black mb-2">Answer Choices:</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {q.choices.map((choice, index) => (
-                          <div key={index} className={`p-2 rounded-lg border ${index === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-alarm-black'}`}>
-                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {renderTextWithLatex(choice)}
+                          <div key={index} className={`p-2 rounded-lg border font-medium ${index === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+                            <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {renderTextWithLatex(choice)}
                             {index === 0 && <span className="ml-2 text-xs font-medium">✓ Correct</span>}
                           </div>
                         ))}
@@ -639,7 +736,7 @@ export default function AdminPage() {
                     {q.explanation && (
                       <div>
                         <h4 className="font-medium text-alarm-black mb-1">Explanation:</h4>
-                        <p className="text-alarm-black/70 bg-alarm-blue-light/20 p-3 rounded-lg text-sm">
+                        <p className="text-gray-800 bg-alarm-blue-light/20 p-3 rounded-lg text-sm font-medium">
                           {renderTextWithLatex(q.explanation)}
                         </p>
                       </div>
@@ -657,4 +754,4 @@ export default function AdminPage() {
       </div>
     </div>
   );
-} 
+}
