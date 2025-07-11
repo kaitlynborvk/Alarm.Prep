@@ -2,18 +2,76 @@
 
 import { useState, useEffect } from "react";
 
-// Simple text formatter for LaTeX preview (converts common LaTeX to readable text)
-const formatLatexPreview = (text: string): string => {
+// Hybrid LaTeX preview formatter - renders sqrt with CSS, others as text
+const formatLatexPreview = (text: string): { __html: string } | string => {
   if (!text) return '';
   
+  // Check if text contains sqrt - if so, return HTML for React dangerouslySetInnerHTML
+  if (text.includes('\\sqrt{')) {
+    let processedText = text
+      // Convert common LaTeX symbols to Unicode equivalents first
+      .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
+      .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
+      .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
+        // Superscripts: x^2 -> x², x^{10} -> x¹⁰
+        const cleanExp = exp.replace(/[{}]/g, '');
+        const superscriptMap: { [key: string]: string } = {
+          '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+        };
+        return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
+      })
+      .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
+        // Subscripts: x_1 -> x₁, x_{10} -> x₁₀
+        const cleanSub = sub.replace(/[{}]/g, '');
+        const subscriptMap: { [key: string]: string } = {
+          '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+          '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+        };
+        return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
+      })
+      .replace(/\\pi/g, 'π')
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\gamma/g, 'γ')
+      .replace(/\\delta/g, 'δ')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\lambda/g, 'λ')
+      .replace(/\\mu/g, 'μ')
+      .replace(/\\sigma/g, 'σ')
+      .replace(/\\phi/g, 'φ')
+      .replace(/\\omega/g, 'ω')
+      .replace(/\\infty/g, '∞')
+      .replace(/\\pm/g, '±')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\neq/g, '≠')
+      .replace(/\\leq/g, '≤')
+      .replace(/\\geq/g, '≥')
+      .replace(/\\sum/g, '∑')
+      .replace(/\\int/g, '∫')
+      .replace(/\\partial/g, '∂')
+      .replace(/\\nabla/g, '∇')
+      // Clean up any remaining backslashes except sqrt
+      .replace(/\\(?!sqrt)/g, '');
+
+    // Now handle sqrt with a simpler, more reliable approach
+    processedText = processedText.replace(/\\sqrt\{([^}]+)\}/g, (match, content) => {
+      return `<span class="sqrt-symbol">
+        <span class="sqrt-radical">√</span><span class="sqrt-content">${content}</span>
+      </span>`;
+    });
+
+    return { __html: processedText };
+  }
+  
+  // Fallback to simple text conversion for non-sqrt content
   return text
-    // Convert common LaTeX symbols to Unicode equivalents
     .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
     .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)') // Fractions: \frac{a}{b} -> (a)/(b)
-    .replace(/\\sqrt\{([^}]+)\}/g, '√($1)') // Square root: \sqrt{x} -> √(x)
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
     .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-      // Superscripts: x^2 -> x², x^{10} -> x¹⁰
       const cleanExp = exp.replace(/[{}]/g, '');
       const superscriptMap: { [key: string]: string } = {
         '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
@@ -22,7 +80,6 @@ const formatLatexPreview = (text: string): string => {
       return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
     })
     .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
-      // Subscripts: x_1 -> x₁, x_{10} -> x₁₀
       const cleanSub = sub.replace(/[{}]/g, '');
       const subscriptMap: { [key: string]: string } = {
         '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
@@ -52,7 +109,6 @@ const formatLatexPreview = (text: string): string => {
     .replace(/\\int/g, '∫')
     .replace(/\\partial/g, '∂')
     .replace(/\\nabla/g, '∇')
-    // Clean up any remaining backslashes
     .replace(/\\/g, '');
 };
 
@@ -323,11 +379,44 @@ export default function AdminPage() {
   const renderTextWithLatex = (text: string) => {
     if (!text) return null;
     const formatted = formatLatexPreview(text);
-    return <span>{formatted}</span>;
+    
+    // If formatted is an object with __html, use dangerouslySetInnerHTML
+    if (typeof formatted === 'object' && formatted.__html) {
+      return (
+        <span dangerouslySetInnerHTML={formatted} />
+      );
+    }
+    
+    // Otherwise return plain text
+    return <span>{formatted as string}</span>;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
+      {/* CSS for sqrt styling */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .sqrt-symbol {
+            position: relative;
+            display: inline-block;
+            white-space: nowrap;
+          }
+          .sqrt-radical {
+            font-size: 1.2em;
+            position: relative;
+            top: 0.1em;
+          }
+          .sqrt-content {
+            border-top: 1px solid currentColor;
+            padding-top: 0px;
+            display: inline-block;
+            position: relative;
+            top: 0.15em;
+            margin-left: -1px;
+          }
+        `
+      }} />
+      
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
