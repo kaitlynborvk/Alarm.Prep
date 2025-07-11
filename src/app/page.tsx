@@ -328,12 +328,12 @@ export default function Home() {
   console.log('Available questionTypes:', questionTypes); // DEBUG LOG
 
   return (
-    <div className="min-h-screen pb-16 bg-blue-50">
+    <div className="min-h-screen pb-16">
       <main className="max-w-md mx-auto p-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-alarm-black mb-2">Alarm Prep</h1>
-          <p className="text-lg text-alarm-black/80">Your daily dose of exam readiness.</p>
+          <p className="text-lg text-white">Your daily dose of exam readiness.</p>
         </div>
 
         {/* Alarms Tab and Create Icon */}

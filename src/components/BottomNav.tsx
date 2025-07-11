@@ -14,7 +14,7 @@ export default function BottomNav() {
           <Link 
             href="/"
             className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-              pathname === '/' ? 'text-alarm-blue' : 'text-alarm-black/60 hover:text-alarm-black'
+              pathname === '/' ? 'text-alarm-blue' : 'text-alarm-black hover:text-alarm-blue'
             }`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,7 +25,7 @@ export default function BottomNav() {
           <Link 
             href="/stats"
             className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-              pathname === '/stats' ? 'text-alarm-blue' : 'text-alarm-black/60 hover:text-alarm-black'
+              pathname === '/stats' ? 'text-alarm-blue' : 'text-alarm-black hover:text-alarm-blue'
             }`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -36,7 +36,7 @@ export default function BottomNav() {
           <Link 
             href="/settings"
             className={`flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-              pathname === '/settings' ? 'text-alarm-blue' : 'text-alarm-black/60 hover:text-alarm-black'
+              pathname === '/settings' ? 'text-alarm-blue' : 'text-alarm-black hover:text-alarm-blue'
             }`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

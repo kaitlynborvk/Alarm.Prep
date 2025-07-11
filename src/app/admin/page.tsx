@@ -2,23 +2,29 @@
 
 import { useState, useEffect } from "react";
 
-// Hybrid LaTeX preview formatter - renders sqrt with CSS, others as text
+// Hybrid LaTeX preview formatter - renders sqrt and fractions with CSS, others as text
 const formatLatexPreview = (text: string): { __html: string } | string => {
   if (!text) return '';
   
-  // Check if text contains sqrt - if so, return HTML for React dangerouslySetInnerHTML
-  if (text.includes('\\sqrt{')) {
+  // Check if text contains sqrt or frac - if so, return HTML for React dangerouslySetInnerHTML
+  if (text.includes('\\sqrt{') || text.includes('\\frac{')) {
     let processedText = text
       // Convert common LaTeX symbols to Unicode equivalents first
       .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
       .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
-      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
       .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-        // Superscripts: x^2 -> x², x^{10} -> x¹⁰
+        // Superscripts: x^2 -> x², x^{10} -> x¹⁰, x^a -> xᵃ
         const cleanExp = exp.replace(/[{}]/g, '');
         const superscriptMap: { [key: string]: string } = {
           '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+          'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
+          'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
+          't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
+          'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
+          'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
+          'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
+          '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
         };
         return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
       })
@@ -36,11 +42,24 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
       .replace(/\\beta/g, 'β')
       .replace(/\\gamma/g, 'γ')
       .replace(/\\delta/g, 'δ')
+      .replace(/\\epsilon/g, 'ε')
+      .replace(/\\zeta/g, 'ζ')
+      .replace(/\\eta/g, 'η')
       .replace(/\\theta/g, 'θ')
+      .replace(/\\iota/g, 'ι')
+      .replace(/\\kappa/g, 'κ')
       .replace(/\\lambda/g, 'λ')
       .replace(/\\mu/g, 'μ')
+      .replace(/\\nu/g, 'ν')
+      .replace(/\\xi/g, 'ξ')
+      .replace(/\\omicron/g, 'ο')
+      .replace(/\\rho/g, 'ρ')
       .replace(/\\sigma/g, 'σ')
+      .replace(/\\tau/g, 'τ')
+      .replace(/\\upsilon/g, 'υ')
       .replace(/\\phi/g, 'φ')
+      .replace(/\\chi/g, 'χ')
+      .replace(/\\psi/g, 'ψ')
       .replace(/\\omega/g, 'ω')
       .replace(/\\infty/g, '∞')
       .replace(/\\pm/g, '±')
@@ -51,31 +70,117 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
       .replace(/\\geq/g, '≥')
       .replace(/\\sum/g, '∑')
       .replace(/\\int/g, '∫')
+      .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, '∑$1^$2') // Sum with limits: \sum_{i=1}^{n} -> ∑i=1^n
+      .replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, '∫$1^$2') // Integral with limits: \int_{a}^{b} -> ∫a^b
       .replace(/\\partial/g, '∂')
-      .replace(/\\nabla/g, '∇')
-      // Clean up any remaining backslashes except sqrt
-      .replace(/\\(?!sqrt)/g, '');
+      .replace(/\\nabla/g, '∇');
 
-    // Now handle sqrt with a simpler, more reliable approach
-    processedText = processedText.replace(/\\sqrt\{([^}]+)\}/g, (match, content) => {
-      return `<span class="sqrt-symbol">
-        <span class="sqrt-radical">√</span><span class="sqrt-content">${content}</span>
-      </span>`;
-    });
+    // Recursive function to handle nested LaTeX expressions
+    const processNestedLatex = (str: string): string => {
+      let result = str;
+      let hasChanges = true;
+      
+      // Keep processing until no more changes are made
+      while (hasChanges) {
+        const before = result;
+        
+        // Handle fractions first (innermost expressions)
+        result = result.replace(/\\frac\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, numerator, denominator) => {
+          // Recursively process the numerator and denominator
+          const processedNum = processNestedLatex(numerator);
+          const processedDen = processNestedLatex(denominator);
+          return `<span class="fraction">
+            <span class="numerator">${processedNum}</span>
+            <span class="denominator">${processedDen}</span>
+          </span>`;
+        });
+        
+        // Handle square roots
+        result = result.replace(/\\sqrt\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
+          // Recursively process the content inside sqrt
+          const processedContent = processNestedLatex(content);
+          return `<span class="sqrt-symbol">
+            <span class="sqrt-radical">√</span><span class="sqrt-content">${processedContent}</span>
+          </span>`;
+        });
+        
+        // Handle superscripts and subscripts within the processed content
+        result = result.replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
+          const cleanExp = exp.replace(/[{}]/g, '');
+          
+          // For single characters or simple numbers, use Unicode superscripts
+          if (cleanExp.length === 1 || /^\d+$/.test(cleanExp)) {
+            const superscriptMap: { [key: string]: string } = {
+              '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+              '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+              'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
+              'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
+              't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
+              'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
+              'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
+              'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
+              '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
+            };
+            return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
+          } else {
+            // For complex expressions, use CSS superscript
+            const processedExp = processNestedLatex(cleanExp);
+            return `<sup>${processedExp}</sup>`;
+          }
+        });
+        
+        result = result.replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
+          const cleanSub = sub.replace(/[{}]/g, '');
+          
+          // For single characters or simple numbers, use Unicode subscripts
+          if (cleanSub.length === 1 || /^\d+$/.test(cleanSub)) {
+            const subscriptMap: { [key: string]: string } = {
+              '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+              '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+              'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ',
+              'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 'v': 'ᵥ', 'x': 'ₓ'
+            };
+            return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
+          } else {
+            // For complex expressions, use CSS subscript
+            const processedSub = processNestedLatex(cleanSub);
+            return `<sub>${processedSub}</sub>`;
+          }
+        });
+        
+        hasChanges = (result !== before);
+      }
+      
+      return result;
+    };
+
+    // Apply the recursive processing
+    processedText = processNestedLatex(processedText);
+    
+    // Clean up any remaining backslashes except already processed ones
+    processedText = processedText.replace(/\\(?![a-zA-Z])/g, '');
 
     return { __html: processedText };
   }
   
-  // Fallback to simple text conversion for non-sqrt content
+  // Fallback to simple text conversion for non-sqrt/frac content
   return text
     .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
     .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
     .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
     .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
       const cleanExp = exp.replace(/[{}]/g, '');
       const superscriptMap: { [key: string]: string } = {
         '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
+        'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
+        't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
+        'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
+        'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
+        'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
+        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
       };
       return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
     })
@@ -92,11 +197,24 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
     .replace(/\\beta/g, 'β')
     .replace(/\\gamma/g, 'γ')
     .replace(/\\delta/g, 'δ')
+    .replace(/\\epsilon/g, 'ε')
+    .replace(/\\zeta/g, 'ζ')
+    .replace(/\\eta/g, 'η')
     .replace(/\\theta/g, 'θ')
+    .replace(/\\iota/g, 'ι')
+    .replace(/\\kappa/g, 'κ')
     .replace(/\\lambda/g, 'λ')
     .replace(/\\mu/g, 'μ')
+    .replace(/\\nu/g, 'ν')
+    .replace(/\\xi/g, 'ξ')
+    .replace(/\\omicron/g, 'ο')
+    .replace(/\\rho/g, 'ρ')
     .replace(/\\sigma/g, 'σ')
+    .replace(/\\tau/g, 'τ')
+    .replace(/\\upsilon/g, 'υ')
     .replace(/\\phi/g, 'φ')
+    .replace(/\\chi/g, 'χ')
+    .replace(/\\psi/g, 'ψ')
     .replace(/\\omega/g, 'ω')
     .replace(/\\infty/g, '∞')
     .replace(/\\pm/g, '±')
@@ -107,6 +225,8 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
     .replace(/\\geq/g, '≥')
     .replace(/\\sum/g, '∑')
     .replace(/\\int/g, '∫')
+    .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, '∑$1^$2') // Sum with limits
+    .replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, '∫$1^$2') // Integral with limits
     .replace(/\\partial/g, '∂')
     .replace(/\\nabla/g, '∇')
     .replace(/\\/g, '');
@@ -393,7 +513,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      {/* CSS for sqrt styling */}
+      {/* CSS for sqrt and fraction styling */}
       <style dangerouslySetInnerHTML={{
         __html: `
           .sqrt-symbol {
@@ -413,6 +533,37 @@ export default function AdminPage() {
             position: relative;
             top: 0.15em;
             margin-left: -1px;
+          }
+          .fraction {
+            display: inline-block;
+            position: relative;
+            vertical-align: middle;
+            text-align: center;
+            font-size: 0.9em;
+          }
+          .numerator {
+            display: block;
+            border-bottom: 1px solid currentColor;
+            padding-bottom: 1px;
+            margin-bottom: 1px;
+          }
+          .denominator {
+            display: block;
+            padding-top: 1px;
+          }
+          sup {
+            font-size: 0.75em;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+            top: -0.5em;
+          }
+          sub {
+            font-size: 0.75em;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline;
+            bottom: -0.25em;
           }
         `
       }} />
