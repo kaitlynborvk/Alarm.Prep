@@ -235,21 +235,23 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
 const EXAMS = ["GMAT", "LSAT"] as const;
 const QUESTION_TYPES = {
   GMAT: [
-    { id: "quantitative", name: "Quantitative Reasoning" },
-    { id: "verbal", name: "Verbal Reasoning" },
-    { id: "data", name: "Data Insights" },
+    { id: "Quantitative", name: "Quantitative Reasoning" },
+    { id: "Verbal", name: "Verbal Reasoning" },
+    { id: "Data", name: "Data Insights" },
   ],
   LSAT: [
-    { id: "reading", name: "Reading Comprehension" },
-    { id: "logical", name: "Logical Reasoning" },
+    { id: "Reading Comprehension", name: "Reading Comprehension" },
+    { id: "Logical Reasoning", name: "Logical Reasoning" },
+    { id: "Logic Games", name: "Logic Games" },
   ],
 } as const;
 const QUESTION_SUBCATEGORIES = {
-  quantitative: ["Random", "Algebra & Equations", "Arithmetic & Number Properties", "Word Problems & Math Logic", "Logic, Sets, and Counting"],
-  verbal: ["Random", "Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
-  data: ["Random", "Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
-  reading: ["Random", "Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
-  logical: ["Random", "Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
+  "Quantitative": ["Random", "Algebra & Equations", "Arithmetic & Number Properties", "Word Problems & Math Logic", "Logic, Sets, and Counting"],
+  "Verbal": ["Random", "Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
+  "Data": ["Random", "Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
+  "Reading Comprehension": ["Random", "Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
+  "Logical Reasoning": ["Random", "Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
+  "Logic Games": ["Random", "Linear Games", "Grouping Games", "Hybrid Games", "Pattern Games", "Selection Games"],
 } as const;
 const DIFFICULTIES = [
   { id: "easy", name: "Easy" },
@@ -302,7 +304,7 @@ export default function AdminPage() {
   const [exam, setExam] = useState<keyof typeof QUESTION_TYPES>(EXAMS[0]);
   const [type, setType] = useState<QuestionTypeID>(QUESTION_TYPES[EXAMS[0]][0].id);
   const [subcategory, setSubcategory] = useState<Subcategory>(
-    QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id][0]
+    QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id as keyof typeof QUESTION_SUBCATEGORIES][0]
   );
   const [text, setText] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
@@ -312,8 +314,19 @@ export default function AdminPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<DifficultyID>(DIFFICULTIES[0].id);
   const [difficultyFilter, setDifficultyFilter] = useState("");
+  const [examFilter, setExamFilter] = useState("");
   const [explanation, setExplanation] = useState("");
 
+  // Enhanced state for new features
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [showStats, setShowStats] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'exam' | 'type' | 'difficulty'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list');
+  
   // Fetch questions from API
   const fetchQuestions = async () => {
     setLoading(true);
@@ -479,20 +492,162 @@ export default function AdminPage() {
     }
   };
 
-  // Filtered questions
-  const displayedQuestions = questions.filter((q) => {
-    const typeMatch = !filter || q.type === filter;
-    const difficultyMatch = !difficultyFilter || q.difficulty === difficultyFilter;
-    return typeMatch && difficultyMatch;
-  });
+  // Import questions from JSON file
+  const handleImportQuestions = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'text-green-600 bg-green-100';
-      case 'intermediate': return 'text-alarm-yellow bg-yellow-100';
-      case 'hard': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedQuestions = JSON.parse(content);
+        
+        if (!Array.isArray(importedQuestions)) {
+          throw new Error('Invalid file format');
+        }
+
+        setLoading(true);
+        let successCount = 0;
+        
+        for (const q of importedQuestions) {
+          try {
+            await fetch("/api/questions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                exam: q.exam,
+                type: q.type,
+                subcategory: q.subcategory,
+                text: q.text,
+                correctAnswer: q.correctAnswer,
+                choices: q.choices,
+                difficulty: q.difficulty,
+                explanation: q.explanation || "",
+              }),
+            });
+            successCount++;
+          } catch (err) {
+            console.error('Failed to import question:', err);
+          }
+        }
+        
+        await fetchQuestions();
+        setSuccess(`Successfully imported ${successCount} questions!`);
+      } catch (err) {
+        setError('Failed to import questions. Please check the file format.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Enhanced filtered questions with search and sorting
+  const displayedQuestions = questions
+    .filter((q) => {
+      const typeMatch = !filter || q.type === filter;
+      const difficultyMatch = !difficultyFilter || q.difficulty === difficultyFilter;
+      const examMatch = !examFilter || q.exam === examFilter;
+      const searchMatch = !searchTerm || 
+        q.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.explanation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.choices.some(choice => choice.toLowerCase().includes(searchTerm.toLowerCase()));
+      return typeMatch && difficultyMatch && examMatch && searchMatch;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.createdAt || '').getTime() - new Date(b.createdAt || '').getTime();
+          break;
+        case 'exam':
+          comparison = a.exam.localeCompare(b.exam);
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'difficulty':
+          const diffOrder = { 'easy': 1, 'intermediate': 2, 'hard': 3 };
+          comparison = (diffOrder[a.difficulty as keyof typeof diffOrder] || 4) - 
+                      (diffOrder[b.difficulty as keyof typeof diffOrder] || 4);
+          break;
+      }
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+
+  // Question statistics
+  const getQuestionStats = () => {
+    const total = questions.length;
+    const byExam = questions.reduce((acc, q) => {
+      acc[q.exam] = (acc[q.exam] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const byDifficulty = questions.reduce((acc, q) => {
+      acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const byType = questions.reduce((acc, q) => {
+      acc[q.type] = (acc[q.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return { total, byExam, byDifficulty, byType };
+  };
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    if (selectedQuestions.length === displayedQuestions.length) {
+      setSelectedQuestions([]);
+    } else {
+      setSelectedQuestions(displayedQuestions.map(q => q.id));
     }
+  };
+
+  const handleSelectQuestion = (id: number) => {
+    setSelectedQuestions(prev => 
+      prev.includes(id) 
+        ? prev.filter(qId => qId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const bulkDeleteQuestions = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedQuestions.length} questions?`)) return;
+    
+    setLoading(true);
+    try {
+      await Promise.all(selectedQuestions.map(id => 
+        fetch("/api/questions", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        })
+      ));
+      await fetchQuestions();
+      setSelectedQuestions([]);
+      setSuccess(`${selectedQuestions.length} questions deleted successfully!`);
+    } catch (err: any) {
+      setError("Failed to delete questions");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Export questions as JSON
+  const exportQuestions = () => {
+    const questionsToExport = selectedQuestions.length > 0 
+      ? questions.filter(q => selectedQuestions.includes(q.id))
+      : displayedQuestions;
+    
+    const dataStr = JSON.stringify(questionsToExport, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `questions_${new Date().toISOString().split('T')[0]}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
   };
 
   // Helper function to render text with LaTeX support
@@ -509,6 +664,15 @@ export default function AdminPage() {
     
     // Otherwise return plain text
     return <span>{formatted as string}</span>;
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'text-green-600 bg-green-100';
+      case 'intermediate': return 'text-yellow-600 bg-yellow-100';
+      case 'hard': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
   };
 
   return (
@@ -571,8 +735,108 @@ export default function AdminPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Question Management</h1>
-          <p className="text-lg text-gray-700">Manage LSAT and GMAT questions for your alarm app</p>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Question Management Dashboard</h1>
+              <p className="text-lg text-gray-700">Comprehensive admin tools for LSAT and GMAT questions</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-2xl font-bold text-alarm-blue">{questions.length}</div>
+                <div className="text-sm text-gray-600">Total Questions</div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-green-600">
+                  {questions.filter(q => q.difficulty === 'easy').length}
+                </div>
+                <div className="text-sm text-gray-600">Easy</div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {questions.filter(q => q.difficulty === 'intermediate').length}
+                </div>
+                <div className="text-sm text-gray-600">Medium</div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-red-600">
+                  {questions.filter(q => q.difficulty === 'hard').length}
+                </div>
+                <div className="text-sm text-gray-600">Hard</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Analytics Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">GMAT Questions</p>
+                <p className="text-3xl font-semibold text-alarm-blue">
+                  {questions.filter(q => q.exam === 'GMAT').length}
+                </p>
+              </div>
+              <div className="p-3 bg-alarm-blue-light rounded-full">
+                <svg className="w-8 h-8 text-alarm-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">LSAT Questions</p>
+                <p className="text-3xl font-semibold text-purple-600">
+                  {questions.filter(q => q.exam === 'LSAT').length}
+                </p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">With Explanations</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {questions.filter(q => q.explanation && q.explanation.trim()).length}
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Recent (7 days)</p>
+                <p className="text-3xl font-semibold text-orange-600">
+                  {questions.filter(q => {
+                    const createdDate = new Date(q.createdAt || '');
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return createdDate > weekAgo;
+                  }).length}
+                </p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-full">
+                <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
         </div>
 
         {loading && (
@@ -609,6 +873,19 @@ export default function AdminPage() {
         {/* Add Question Form - Always Visible */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Question</h2>
+          
+          {/* Quick Actions */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Import Questions</h3>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportQuestions}
+                className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-alarm-blue file:text-white hover:file:bg-alarm-blue-dark"
+              />
+            </div>
+          </div>
           <form onSubmit={addQuestion} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Exam Selection */}
@@ -873,13 +1150,43 @@ export default function AdminPage() {
           </form>
         </div>
 
-        {/* Filters */}
+        {/* Enhanced Toolbar */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-alarm-black/10">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-alarm-black">Filter by type:</span>
+          {/* Search and Filter Row */}
+          <div className="flex flex-col lg:flex-row gap-4 mb-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search questions, answers, or explanations..."
+                  className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
               <select
-                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue"
+                value={examFilter}
+                onChange={(e) => setExamFilter(e.target.value)}
+              >
+                <option value="">All Exams</option>
+                {EXAMS.map((ex) => (
+                  <option key={ex} value={ex}>{ex}</option>
+                ))}
+              </select>
+
+              <select
+                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               >
@@ -888,12 +1195,9 @@ export default function AdminPage() {
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-alarm-black">Filter by difficulty:</span>
               <select
-                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue"
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
               >
@@ -902,20 +1206,140 @@ export default function AdminPage() {
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-alarm-black/70">
-                Total Questions: {displayedQuestions.length}
-              </span>
+              <select
+                className="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'date' | 'exam' | 'type' | 'difficulty')}
+              >
+                <option value="date">Sort by Date</option>
+                <option value="exam">Sort by Exam</option>
+                <option value="type">Sort by Type</option>
+                <option value="difficulty">Sort by Difficulty</option>
+              </select>
+
+              <button
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                title={`Sort ${sortOrder === 'asc' ? 'ascending' : 'descending'}`}
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </button>
             </div>
           </div>
+
+          {/* Action Row */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            {/* Stats and Info */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Showing {displayedQuestions.length} of {questions.length} questions
+              </span>
+              {examFilter && (
+                <span className="text-xs text-red-600 font-medium">
+                  Filter: {examFilter}
+                </span>
+              )}
+              {selectedQuestions.length > 0 && (
+                <span className="text-sm text-alarm-blue font-medium">
+                  {selectedQuestions.length} selected
+                </span>
+              )}
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className="text-sm text-alarm-blue hover:text-alarm-blue-dark underline"
+              >
+                {showStats ? 'Hide' : 'Show'} Statistics
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              {selectedQuestions.length > 0 && (
+                <>
+                  <button
+                    onClick={exportQuestions}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                  >
+                    Export Selected
+                  </button>
+                  <button
+                    onClick={bulkDeleteQuestions}
+                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                  >
+                    Delete Selected
+                  </button>
+                </>
+              )}
+              <button
+                onClick={exportQuestions}
+                className="px-3 py-2 bg-alarm-blue text-white rounded-lg hover:bg-alarm-blue-dark transition-colors text-sm font-medium"
+              >
+                Export All
+              </button>
+              <button
+                onClick={fetchQuestions}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Statistics Panel */}
+          {showStats && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+              <h4 className="font-semibold text-gray-900 mb-3">Question Statistics</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">By Exam</h5>
+                  {Object.entries(getQuestionStats().byExam).map(([exam, count]) => (
+                    <div key={exam} className="flex justify-between text-sm">
+                      <span>{exam}:</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">By Difficulty</h5>
+                  {Object.entries(getQuestionStats().byDifficulty).map(([difficulty, count]) => (
+                    <div key={difficulty} className="flex justify-between text-sm">
+                      <span className="capitalize">{difficulty}:</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">By Type</h5>
+                  {Object.entries(getQuestionStats().byType).slice(0, 5).map(([type, count]) => (
+                    <div key={type} className="flex justify-between text-sm">
+                      <span>{type}:</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Questions List */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-alarm-black/10">
           <div className="px-6 py-4 border-b border-alarm-black/10">
-            <h3 className="text-lg font-semibold text-alarm-black">Questions</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-alarm-black">Questions</h3>
+              {displayedQuestions.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuestions.length === displayedQuestions.length}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-alarm-blue focus:ring-alarm-blue"
+                  />
+                  <label className="text-sm text-gray-600">Select All</label>
+                </div>
+              )}
+            </div>
           </div>
           
           {displayedQuestions.length === 0 ? (
@@ -924,14 +1348,24 @@ export default function AdminPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-alarm-black">No questions found</h3>
-              <p className="mt-1 text-sm text-alarm-black/70">Add your first question using the form above.</p>
+              <p className="mt-1 text-sm text-alarm-black/70">
+                {searchTerm || filter || difficultyFilter || examFilter
+                  ? "Try adjusting your search or filters" 
+                  : "Add your first question using the form above"}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-alarm-black/10">
               {displayedQuestions.map((q) => (
-                <div key={q.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div key={q.id} className={`p-6 hover:bg-gray-50 transition-colors ${selectedQuestions.includes(q.id) ? 'bg-alarm-blue-light/10' : ''}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestions.includes(q.id)}
+                        onChange={() => handleSelectQuestion(q.id)}
+                        className="rounded border-gray-300 text-alarm-blue focus:ring-alarm-blue"
+                      />
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-alarm-blue text-white">
                         {q.exam}
                       </span>
@@ -942,15 +1376,26 @@ export default function AdminPage() {
                         {DIFFICULTIES.find(d => d.id === q.difficulty)?.name || q.difficulty}
                       </span>
                     </div>
-                    <button
-                      onClick={() => deleteQuestion(q.id)}
-                      className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 border-2 border-red-300 hover:border-red-500 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
-                      title="Delete question"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingQuestion(q)}
+                        className="text-alarm-blue hover:text-alarm-blue-dark bg-alarm-blue-light hover:bg-alarm-blue-light/80 border-2 border-alarm-blue/30 hover:border-alarm-blue/50 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
+                        title="Edit question"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => deleteQuestion(q.id)}
+                        className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 border-2 border-red-300 hover:border-red-500 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
+                        title="Delete question"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -991,7 +1436,193 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {/* Edit Question Modal */}
+        {editingQuestion && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Question</h2>
+                  <button
+                    onClick={() => setEditingQuestion(null)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <EditQuestionForm 
+                  question={editingQuestion}
+                  onSave={async (updatedQuestion) => {
+                    // Update question logic here
+                    try {
+                      const res = await fetch("/api/questions", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedQuestion),
+                      });
+                      if (!res.ok) throw new Error("Failed to update question");
+                      await fetchQuestions();
+                      setEditingQuestion(null);
+                      setSuccess("Question updated successfully!");
+                    } catch (err: any) {
+                      setError("Failed to update question");
+                    }
+                  }}
+                  onCancel={() => setEditingQuestion(null)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// Edit Question Form Component
+function EditQuestionForm({ 
+  question, 
+  onSave, 
+  onCancel 
+}: { 
+  question: Question;
+  onSave: (question: Question) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(question.text);
+  const [correctAnswer, setCorrectAnswer] = useState(question.correctAnswer);
+  const [choices, setChoices] = useState(question.choices.slice(1)); // Exclude correct answer
+  const [explanation, setExplanation] = useState(question.explanation || "");
+  const [exam, setExam] = useState(question.exam);
+  const [type, setType] = useState(question.type);
+  const [subcategory, setSubcategory] = useState(question.subcategory);
+  const [difficulty, setDifficulty] = useState(question.difficulty);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSave({
+        ...question,
+        text,
+        correctAnswer,
+        choices: [correctAnswer, ...choices],
+        explanation,
+        exam,
+        type,
+        subcategory,
+        difficulty
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateChoice = (index: number, value: string) => {
+    const newChoices = [...choices];
+    newChoices[index] = value;
+    setChoices(newChoices);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Form fields similar to the add question form */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Exam</label>
+          <select
+            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={exam}
+            onChange={(e) => setExam(e.target.value)}
+          >
+            {EXAMS.map((ex) => (
+              <option key={ex} value={ex}>{ex}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Difficulty</label>
+          <select
+            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+          >
+            {DIFFICULTIES.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Question Text</label>
+        <textarea
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Correct Answer</label>
+        <input
+          type="text"
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={correctAnswer}
+          onChange={(e) => setCorrectAnswer(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Other Answer Choices</label>
+        <div className="space-y-2">
+          {choices.map((choice, index) => (
+            <input
+              key={index}
+              type="text"
+              placeholder={`Choice ${String.fromCharCode(66 + index)}`}
+              className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={choice}
+              onChange={(e) => updateChoice(index, e.target.value)}
+              required
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Explanation (Optional)</label>
+        <textarea
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={explanation}
+          onChange={(e) => setExplanation(e.target.value)}
+        />
+      </div>
+
+      <div className="flex gap-4 pt-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 bg-alarm-blue text-white py-3 px-6 rounded-lg hover:bg-alarm-blue-dark transition-colors font-semibold disabled:opacity-50"
+        >
+          {loading ? 'Updating...' : 'Update Question'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

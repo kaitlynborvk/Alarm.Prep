@@ -52,4 +52,30 @@ export async function DELETE(request: NextRequest) {
     console.error('Error deleting question:', error);
     return NextResponse.json({ error: 'Failed to delete question' }, { status: 500 });
   }
-} 
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, exam, type, subcategory, text, correctAnswer, choices, difficulty, explanation } = body;
+
+    const question = await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: {
+        exam,
+        type,
+        subcategory,
+        text,
+        correctAnswer,
+        choices,
+        difficulty,
+        explanation: explanation || null,
+      },
+    });
+
+    return NextResponse.json(question);
+  } catch (error) {
+    console.error('Error updating question:', error);
+    return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });
+  }
+}
