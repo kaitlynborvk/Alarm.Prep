@@ -421,39 +421,26 @@ export default function Home() {
     <div className="min-h-screen pb-16">
       <main className="max-w-md mx-auto p-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-alarm-black mb-2">Alarm Prep</h1>
-          <p className="text-lg text-white">Your daily dose of exam readiness.</p>
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-alarm-black mb-3">Alarm Prep</h1>
+          <p className="text-xl text-white font-semibold" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'}}>Your daily dose of exam readiness.</p>
         </div>
 
-        {/* Alarms Tab and Create Icon */}
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-semibold text-alarm-black mb-3">Alarms</h2>
-          <button 
-            onClick={() => {
-              setShowAlarmModal(true);
-              setSelectedQuestionType("");
-            }}
-            className="w-16 h-16 bg-alarm-blue text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg mx-auto mb-4"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-          
+        {/* Create Icon and Test Buttons */}
+        <div className="text-center mb-8">
           {/* Test Buttons - Only show in development */}
           {(process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) && (
-            <div className="flex justify-center space-x-2 mt-2">
+            <div className="flex justify-center space-x-3 mt-4">
               <button 
                 onClick={handleTestAlarm}
-                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-medium"
+                className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
                 title="Test question preview with current settings"
               >
                 Test Question
               </button>
               <button 
                 onClick={handleTestNotification}
-                className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs font-medium"
+                className="px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
                 title="Test iOS notification (10 seconds)"
               >
                 Test Notification
@@ -465,11 +452,13 @@ export default function Home() {
         {/* Alarms List */}
         {userAlarms.length === 0 ? (
           <div className="text-center py-12 px-6 bg-white rounded-lg border border-alarm-black/10">
-            <p className="text-gray-500">No alarms set.</p>
-            <p className="text-gray-400 text-sm mt-2">Tap the '+' button to create a new alarm.</p>
+            <h2 className="text-4xl font-bold text-alarm-black mb-6">Alarms</h2>
+            <p className="text-gray-500 text-lg">No alarms set.</p>
+            <p className="text-gray-400 text-base mt-2">Tap the '+' button to create a new alarm.</p>
           </div>
         ) : (
           <div className="space-y-4">
+            <h2 className="text-4xl font-bold text-alarm-black mb-6 text-center">Alarms</h2>
             {userAlarms.map((alarm) => {
               const isOneTime = !alarm.days.some((day: boolean) => day);
 
@@ -747,6 +736,20 @@ export default function Home() {
           </div>
         )}
       </main>
+      
+      {/* Floating Action Button - Add Alarm */}
+      <button 
+        onClick={() => {
+          setShowAlarmModal(true);
+          setSelectedQuestionType("");
+        }}
+        className="fixed bottom-24 right-6 w-16 h-16 bg-alarm-blue text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg z-40"
+        title="Add new alarm"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </button>
       
       <BottomNav />
       

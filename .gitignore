@@ -4,4 +4,15 @@ dist/
 out/
 .env
 .DS_Store
-npm-debug.log 
+npm-debug.log
+*.log
+.cache/
+coverage/
+.nyc_output/
+.vscode-test/
+ios/App/Pods/
+ios/App/build/
+ios/App/App.xcworkspace/xcuserdata/
+*.tmp
+*.swp
+.turbo/ 

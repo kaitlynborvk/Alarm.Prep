@@ -1,0 +1,93 @@
+{
+  // EMERGENCY PERFORMANCE MODE - Maximum Performance Settings
+  
+  // Disable ALL file watching (critical for performance)
+  "files.watcherExclude": {
+    "**/*": true
+  },
+  
+  // Exclude everything from search
+  "search.exclude": {
+    "**/*": true
+  },
+  
+  // Disable TypeScript completely for now
+  "typescript.enabled": false,
+  "typescript.validate.enable": false,
+  "typescript.suggest.enabled": false,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "typescript.suggest.autoImports": false,
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.surveys.enabled": false,
+  
+  // Disable all editor intelligence features
+  "editor.semanticHighlighting.enabled": false,
+  "editor.hover.enabled": false,
+  "editor.quickSuggestions": {
+    "comments": "off",
+    "strings": "off",
+    "other": "off"
+  },
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.parameterHints.enabled": false,
+  "editor.codeLens": false,
+  "editor.lightbulb.enabled": "off",
+  "editor.occurrencesHighlight": "off",
+  "editor.selectionHighlight": false,
+  "editor.wordHighlight": false,
+  "editor.renderLineHighlight": "none",
+  "editor.matchBrackets": "never",
+  "editor.folding": false,
+  "editor.foldingHighlight": false,
+  "editor.unfoldOnClickAfterEndOfLine": false,
+  "editor.showFoldingControls": "never",
+  
+  // Disable Git completely
+  "git.enabled": false,
+  "git.autoRepositoryDetection": false,
+  "git.autorefresh": false,
+  "git.autofetch": false,
+  
+  // Disable extensions auto-loading
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.ignoreRecommendations": true,
+  
+  // Disable telemetry
+  "telemetry.telemetryLevel": "off",
+  
+  // Disable UI elements
+  "breadcrumbs.enabled": false,
+  "editor.minimap.enabled": false,
+  "workbench.statusBar.visible": false,
+  "editor.lineNumbers": "off",
+  "editor.glyphMargin": false,
+  "editor.folding": false,
+  "editor.renderWhitespace": "none",
+  "editor.rulers": [],
+  
+  // Disable auto-save and file operations
+  "files.autoSave": "off",
+  "files.autoSaveDelay": 10000,
+  "files.hotExit": "off",
+  
+  // Disable language features globally
+  "editor.suggest.insertMode": "replace",
+  "editor.acceptSuggestionOnEnter": "off",
+  "editor.acceptSuggestionOnCommitCharacter": false,
+  "editor.suggestOnTriggerCharacters": false,
+  "editor.tabCompletion": "off",
+  
+  // Disable workspace trust
+  "security.workspace.trust.enabled": false,
+  
+  // Disable problems panel
+  "problems.decorations.enabled": false,
+  
+  // Minimal window settings
+  "window.menuBarVisibility": "hidden",
+  "workbench.editor.showTabs": "single",
+  "workbench.editor.enablePreview": false,
+  "workbench.startupEditor": "none",
+  "editor.guides.indentation": false
+}
