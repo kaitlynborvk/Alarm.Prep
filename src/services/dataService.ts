@@ -17,6 +17,7 @@ export interface QuestionFilter {
   exam?: string;
   type?: string;
   difficulty?: string;
+  subcategory?: string; // When "Random", don't filter by subcategory
 }
 
 class DataService {
@@ -30,8 +31,7 @@ class DataService {
       'verbal': 'Verbal', 
       'data': 'Data Insights',
       'logical': 'Logical Reasoning',
-      'reading': 'Reading Comprehension',
-      'games': 'Logic Games'
+      'reading': 'Reading Comprehension'
     };
     const mapped = typeMap[uiType.toLowerCase()] || uiType;
     console.log('Type mapping:', uiType, '→', mapped);
@@ -148,12 +148,19 @@ class DataService {
       }
       
       if (filter.difficulty && question.difficulty.toLowerCase() !== filter.difficulty.toLowerCase()) return false;
+      
+      // Handle subcategory filtering - "Random" means include ALL subcategories (no filter)
+      if (filter.subcategory && filter.subcategory !== 'Random') {
+        if (question.subcategory !== filter.subcategory) return false;
+      }
+      // If subcategory is "Random" or not specified, include all subcategories
+      
       return true;
     });
 
     console.log('Filter result:', filtered.length, 'questions match criteria');
     console.log('Matching questions:', filtered.map(q => ({ 
-      id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty 
+      id: q.id, exam: q.exam, type: q.type, difficulty: q.difficulty, subcategory: q.subcategory
     })));
 
     return filtered;

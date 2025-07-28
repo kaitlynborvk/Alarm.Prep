@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
 import AlarmScreen from '@/components/AlarmScreen';
+import AlarmPopup from '@/components/AlarmPopup';
 import { dataService, Question } from '@/services/dataService';
 import { IOSService } from '@/services/iosService';
 import { alarmService, AlarmInstance } from '@/services/alarmService';
@@ -37,7 +38,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDays, setSelectedDays] = useState([true, true, true, true, true, true, true]); // All days selected by default
   const [selectedQuestionType, setSelectedQuestionType] = useState("");
-  const [selectedSubCategory, setSelectedSubCategory] = useState("random");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("Random");
   const [selectedRingtone, setSelectedRingtone] = useState("default");
   const [examType, setExamType] = useState<"GMAT" | "LSAT" | null>(null); // Track user's exam choice
   const [selectedDifficulty, setSelectedDifficulty] = useState("easy"); // Track difficulty selection
@@ -48,6 +49,7 @@ export default function Home() {
   // Alarm system state
   const [activeAlarm, setActiveAlarm] = useState<AlarmInstance | null>(null);
   const [showAlarmScreen, setShowAlarmScreen] = useState(false);
+  const [showAlarmPopup, setShowAlarmPopup] = useState(false);
 
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -98,13 +100,14 @@ export default function Home() {
     const handleAlarmTriggered = (event: CustomEvent) => {
       console.log('Alarm triggered event:', event.detail);
       setActiveAlarm(event.detail);
-      setShowAlarmScreen(true);
+      setShowAlarmPopup(true);
     };
 
     const handleAlarmDismissed = (event: CustomEvent) => {
       console.log('Alarm dismissed event:', event.detail);
       setActiveAlarm(null);
       setShowAlarmScreen(false);
+      setShowAlarmPopup(false);
     };
 
     // Add event listeners
@@ -126,18 +129,32 @@ export default function Home() {
 
   const lsatQuestionTypes = [
     { id: "reading", name: "Reading Comprehension" },
-    { id: "logical", name: "Logical Reasoning" },
-    { id: "games", name: "Logic Games" }
+    { id: "logical", name: "Logical Reasoning" }
   ];
 
   const questionTypes = examType === "GMAT" ? gmatQuestionTypes : lsatQuestionTypes;
 
   const questionSubCategories = {
-    quantitative: ["Random", "Algebra & Equations", "Arithmetic & Number Properties", "Word Problems & Math Logic", "Logic, Sets, and Counting"],
-    verbal: ["Random", "Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
-    data: ["Random", "Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
-    reading: ["Random", "Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
-    logical: ["Random", "Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
+    quantitative: [
+      "Linear and Quadratic Equations", 
+      "Properties of Numbers", 
+      "Roots and Exponents", 
+      "Inequalities and Absolute Values", 
+      "Unit Conversions", 
+      "Time/Distance/Rate Problems", 
+      "Work Problems", 
+      "Ratios", 
+      "Percents", 
+      "Overlapping Sets", 
+      "Combinations and Permutations", 
+      "Probability", 
+      "GMAT Geometry", 
+      "Functions and Sequences"
+    ],
+    verbal: ["Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
+    data: ["Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
+    reading: ["Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
+    logical: ["Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
   };
 
   const ringtones = [
@@ -254,6 +271,9 @@ export default function Home() {
           filter.difficulty = selectedDifficulty;
         }
         
+        // Add subcategory filter - "Random" means include all subcategories
+        filter.subcategory = selectedSubCategory;
+        
         console.log('Test mode filter:', filter);
         
         // Get a test question with the user's current selections
@@ -280,6 +300,7 @@ export default function Home() {
           const testAlarmInstance: AlarmInstance = {
             alarmId: 9999, // Test alarm ID
             scheduledTime: new Date(),
+            originalAlarmTime: selectedTime, // Add the original alarm time
             question: testQuestion,
             isActive: true
           };
@@ -290,11 +311,11 @@ export default function Home() {
           alarmService.addTestAlarmInstance(testAlarmInstance);
 
           setActiveAlarm(testAlarmInstance);
-          setShowAlarmScreen(true);
+          setShowAlarmPopup(true);  // Show popup first, not screen directly
           setShowAlarmModal(false);
           setIsTestMode(false); // Reset test mode
           
-          console.log('Test alarm screen should now be visible');
+          console.log('Test alarm popup should now be visible');
         } else {
           console.error('No test question found');
           console.error('Debug info:', {
@@ -328,6 +349,7 @@ export default function Home() {
         days: selectedDays,
         examType: examType,
         questionType: selectedQuestionType,
+        subcategory: selectedSubCategory, // Pass the subcategory preference ("Random" or specific)
         difficulty: selectedDifficulty as 'easy' | 'intermediate' | 'hard',
         isActive: true
       });
@@ -397,6 +419,89 @@ export default function Home() {
     }
   };
 
+  // Test function to immediately trigger a web alarm
+  const handleTestWebAlarm = async () => {
+    try {
+      console.log('=== Testing web alarm ===');
+      console.log('Current settings:', {
+        examType,
+        selectedQuestionType,
+        selectedSubCategory,
+        selectedDifficulty
+      });
+
+      if (!examType || !selectedQuestionType) {
+        alert('Please select exam type and question type first!');
+        return;
+      }
+
+      // Test question fetching first
+      console.log('Testing question fetch...');
+      const testFilter = {
+        exam: examType,
+        type: selectedQuestionType,
+        subcategory: selectedSubCategory === 'Random' ? undefined : selectedSubCategory,
+        difficulty: selectedDifficulty
+      };
+      console.log('Test filter:', testFilter);
+      
+      const testQuestion = await dataService.getRandomQuestion(testFilter);
+      console.log('Test question result:', testQuestion);
+      
+      if (!testQuestion) {
+        console.log('No question found with current criteria. Trying broader search...');
+        const broadFilter = { exam: examType };
+        const broadQuestion = await dataService.getRandomQuestion(broadFilter);
+        console.log('Broad search result:', broadQuestion);
+        
+        if (!broadQuestion) {
+          alert('No questions available in database! Please add questions through the admin panel first.');
+          return;
+        }
+      }
+
+      // Create a test alarm config
+      const testAlarmConfig = {
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // Current time in HH:MM format
+        days: [true, true, true, true, true, true, true], // All days
+        examType,
+        questionType: selectedQuestionType,
+        subcategory: selectedSubCategory,
+        difficulty: selectedDifficulty as 'easy' | 'intermediate' | 'hard',
+        isActive: true,
+        name: 'Test Alarm'
+      };
+
+      console.log('Triggering test alarm with config:', testAlarmConfig);
+
+      // Directly trigger the web alarm
+      await alarmService.triggerTestWebAlarm(testAlarmConfig);
+      
+    } catch (error) {
+      console.error('Error in handleTestWebAlarm:', error);
+      alert('Failed to trigger test alarm. Error: ' + error.message);
+    }
+  };
+
+  // Handler for when user wants to answer the question from the popup
+  const handleAnswerQuestion = () => {
+    console.log('User selected "Answer Question" - switching to question screen');
+    setShowAlarmPopup(false);
+    setShowAlarmScreen(true);
+    // The alarm sound should stop when the question screen is shown (handled by AlarmScreen component)
+  };
+
+  // Handler for dismissing the alarm popup
+  const handleDismissPopup = () => {
+    console.log('User dismissed alarm popup');
+    setShowAlarmPopup(false);
+    setActiveAlarm(null);
+    // This should also stop the alarm sound
+    if (activeAlarm) {
+      alarmService.dismissAlarm(activeAlarm.alarmId);
+    }
+  };
+
   useEffect(() => {
     const storedExamType = localStorage.getItem('examType');
     if (storedExamType === 'GMAT' || storedExamType === 'LSAT') {
@@ -410,7 +515,7 @@ export default function Home() {
 
   useEffect(() => {
     if (selectedQuestionType) {
-      setSelectedSubCategory("random");
+      setSelectedSubCategory("Random");
     }
   }, [selectedQuestionType]);
 
@@ -445,6 +550,13 @@ export default function Home() {
               >
                 Test Notification
               </button>
+              <button 
+                onClick={handleTestWebAlarm}
+                className="px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm font-medium"
+                title="Test web alarm immediately"
+              >
+                Test Web Alarm
+              </button>
             </div>
           )}
         </div>
@@ -463,7 +575,7 @@ export default function Home() {
               const isOneTime = !alarm.days.some((day: boolean) => day);
 
               const testSectionName = alarm.questionType.charAt(0).toUpperCase() + alarm.questionType.slice(1);
-              const subCategoryName = alarm.subCategory === 'random' ? 'Random' : alarm.subCategory;
+              const subCategoryName = alarm.subCategory === 'Random' ? 'Random' : alarm.subCategory;
               const difficultyName = alarm.difficulty.charAt(0).toUpperCase() + alarm.difficulty.slice(1);
               const alarmDetails = `${alarm.examType} ${testSectionName} - ${subCategoryName} - ${difficultyName}`;
 
@@ -489,8 +601,18 @@ export default function Home() {
     
                       {/* Time display */}
                       <div>
-                        <span className="text-4xl font-bold text-alarm-black leading-none">{alarm.time}</span>
-                        <span className="text-lg font-medium text-gray-600 ml-1">{parseInt(alarm.time.split(':')[0]) >= 12 ? 'PM' : 'AM'}</span>
+                        {(() => {
+                          const [hours, minutes] = alarm.time.split(':');
+                          const hour24 = parseInt(hours);
+                          const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+                          const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                          return (
+                            <>
+                              <span className="text-4xl font-bold text-alarm-black leading-none">{hour12}:{minutes}</span>
+                              <span className="text-lg font-medium text-gray-600 ml-1">{ampm}</span>
+                            </>
+                          );
+                        })()}
                       </div>
     
                       {/* Other details */}
@@ -673,6 +795,7 @@ export default function Home() {
                         onChange={(e) => setSelectedSubCategory(e.target.value)}
                         className="w-full p-3 bg-gray-100 border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-alarm-blue"
                       >
+                        <option key="Random" value="Random">Random</option>
                         {questionSubCategories[selectedQuestionType as keyof typeof questionSubCategories]?.map((subCategory) => (
                           <option key={subCategory} value={subCategory}>{subCategory}</option>
                         ))}
@@ -753,7 +876,16 @@ export default function Home() {
       
       <BottomNav />
       
-      {/* Alarm Screen Modal */}
+      {/* Alarm Popup - Shows first when alarm triggers */}
+      {showAlarmPopup && activeAlarm && (
+        <AlarmPopup 
+          alarmInstance={activeAlarm}
+          onAnswerQuestion={handleAnswerQuestion}
+          onDismiss={handleDismissPopup}
+        />
+      )}
+      
+      {/* Alarm Screen Modal - Shows when user clicks "Answer Question" */}
       {showAlarmScreen && activeAlarm && (
         <AlarmScreen 
           alarmInstance={activeAlarm}

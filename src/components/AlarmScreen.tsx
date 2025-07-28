@@ -18,6 +18,12 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
   const [isCorrect, setIsCorrect] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Error reporting state
+  const [showErrorReport, setShowErrorReport] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmittingError, setIsSubmittingError] = useState(false);
+  const [errorSubmitted, setErrorSubmitted] = useState(false);
 
   const { question } = alarmInstance;
 
@@ -25,24 +31,38 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
   const renderMathText = (text: string) => {
     if (!text) return text;
     
-    // Split text by LaTeX delimiters and render accordingly
-    // The regex captures both $...$ and $$...$$ patterns
-    const parts = text.split(/(\$\$.*?\$\$|\$[^$]*?\$)/g);
+    // First, split the text by line breaks to handle each line separately
+    const lines = text.split('\n');
     
-    return parts.map((part, index) => {
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        // Block math (display mode)
-        const mathContent = part.slice(2, -2);
-        return <BlockMath key={index} math={mathContent} />;
-      } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-        // Inline math
-        const mathContent = part.slice(1, -1);
-        return <InlineMath key={index} math={mathContent} />;
-      } else {
-        // Regular text
-        return part ? <span key={index}>{part}</span> : null;
-      }
-    }).filter(Boolean);
+    return lines.map((line, lineIndex) => {
+      if (!line) return <br key={lineIndex} />; // Empty line becomes <br>
+      
+      // Split line by LaTeX delimiters and render accordingly
+      // The regex captures both $...$ and $$...$$ patterns
+      const parts = line.split(/(\$\$.*?\$\$|\$[^$]*?\$)/g);
+      
+      const renderedParts = parts.map((part, index) => {
+        if (part.startsWith('$$') && part.endsWith('$$')) {
+          // Block math (display mode)
+          const mathContent = part.slice(2, -2);
+          return <BlockMath key={index} math={mathContent} />;
+        } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+          // Inline math
+          const mathContent = part.slice(1, -1);
+          return <InlineMath key={index} math={mathContent} />;
+        } else {
+          // Regular text
+          return part ? <span key={index}>{part}</span> : null;
+        }
+      }).filter(Boolean);
+      
+      return (
+        <React.Fragment key={lineIndex}>
+          {renderedParts}
+          {lineIndex < lines.length - 1 && <br />}
+        </React.Fragment>
+      );
+    });
   };
 
   // Timer for alarm duration
@@ -52,6 +72,12 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Stop alarm sound when question screen is shown
+  useEffect(() => {
+    console.log('AlarmScreen component mounted - stopping alarm sound');
+    alarmService.stopAlarmSound();
   }, []);
 
   // Format time elapsed
@@ -92,13 +118,7 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
         // Auto-dismiss after showing success
         setTimeout(() => {
           onDismiss();
-        }, 2000);
-      } else {
-        // Reset after showing error
-        setTimeout(() => {
-          setShowResult(false);
-          setSelectedAnswer('');
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
       console.error('Failed to submit answer:', error);
@@ -107,7 +127,49 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
     }
   };
 
-  // Handle snooze
+  // Handle error reporting
+  const handleErrorReport = async () => {
+    if (!errorMessage.trim()) return;
+
+    setIsSubmittingError(true);
+    
+    try {
+      // Get existing error reports from localStorage
+      const existingErrors = JSON.parse(localStorage.getItem('questionErrorReports') || '[]');
+      
+      // Create new error report
+      const newError = {
+        questionId: question.id,
+        message: errorMessage.trim(),
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        resolved: false,
+        questionText: question.text.substring(0, 100) + '...', // Include snippet for context
+        examType: question.exam,
+        questionType: question.type
+      };
+      
+      // Add to existing errors
+      const updatedErrors = [...existingErrors, newError];
+      localStorage.setItem('questionErrorReports', JSON.stringify(updatedErrors));
+      
+      // Clear form and show success
+      setErrorMessage('');
+      setErrorSubmitted(true);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setErrorSubmitted(false);
+        setShowErrorReport(false);
+      }, 3000);
+      
+      console.log('Error report submitted:', newError);
+    } catch (error) {
+      console.error('Failed to submit error report:', error);
+    } finally {
+      setIsSubmittingError(false);
+    }
+  };  // Handle snooze
   const handleSnooze = async () => {
     try {
       await alarmService.snoozeAlarm(alarmInstance.alarmId);
@@ -196,7 +258,7 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
           </div>
           
           {/* Answer Choices */}
-          <div className="space-y-3">
+          <div className="space-y-3 mb-4">
             {question.choices.map((choice, index) => (
               <label
                 key={index}
@@ -228,6 +290,55 @@ export default function AlarmScreen({ alarmInstance, onDismiss, isTestMode = fal
                 </span>
               </label>
             ))}
+          </div>
+
+          {/* Compact Error Reporting */}
+          <div className="border-t border-gray-200 pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-600">Found an error?</span>
+              <button
+                onClick={() => setShowErrorReport(!showErrorReport)}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {showErrorReport ? 'Cancel' : 'Report'}
+              </button>
+            </div>
+            
+            {showErrorReport && (
+              <div className="mt-2 space-y-2">
+                <textarea
+                  value={errorMessage}
+                  onChange={(e) => setErrorMessage(e.target.value.slice(0, 500))}
+                  placeholder="Describe the error (wrong answer, typo, etc.)..."
+                  className="w-full p-2 border border-gray-300 rounded text-xs resize-none"
+                  rows={2}
+                  maxLength={500}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{errorMessage.length}/500</span>
+                  <button
+                    onClick={handleErrorReport}
+                    disabled={!errorMessage.trim() || isSubmittingError}
+                    className={`px-3 py-1 rounded text-xs font-medium ${
+                      errorMessage.trim() && !isSubmittingError
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isSubmittingError ? 'Submitting...' : 'Submit'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {errorSubmitted && (
+              <div className="mt-2 p-2 bg-green-100 border border-green-200 rounded flex items-center">
+                <svg className="w-3 h-3 text-green-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-xs text-green-800">Report submitted! Thank you.</span>
+              </div>
+            )}
           </div>
         </div>
 

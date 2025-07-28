@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { errorReportingService, ReportedError } from "@/services/errorReportingService";
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
 // Hybrid LaTeX preview formatter - renders sqrt and fractions with CSS, others as text
 const formatLatexPreview = (text: string): { __html: string } | string => {
@@ -245,22 +248,7 @@ const QUESTION_TYPES = {
   ],
 } as const;
 const QUESTION_SUBCATEGORIES = {
-  "Quantitative": [
-    "Linear and Quadratic Equations", 
-    "Properties of Numbers", 
-    "Roots and Exponents", 
-    "Inequalities and Absolute Values", 
-    "Unit Conversions", 
-    "Time/Distance/Rate Problems", 
-    "Work Problems", 
-    "Ratios", 
-    "Percents", 
-    "Overlapping Sets", 
-    "Combinations and Permutations", 
-    "Probability", 
-    "GMAT Geometry", 
-    "Functions and Sequences"
-  ],
+  "Quantitative": ["Algebra & Equations", "Arithmetic & Number Properties", "Word Problems & Math Logic", "Logic, Sets, and Counting"],
   "Verbal": ["Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
   "Data Insights": ["Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
   "Reading Comprehension": ["Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
@@ -340,97 +328,74 @@ export default function AdminPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list');
   
-  // Error reporting state
-  const [reportedErrors, setReportedErrors] = useState<any[]>([]);
-  const [showErrorReports, setShowErrorReports] = useState(false);
-  const [selectedError, setSelectedError] = useState<any | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  
   // Hierarchical navigation state
   const [selectedExamType, setSelectedExamType] = useState<string | null>(null);
   const [selectedQuestionType, setSelectedQuestionType] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   
-  // Fetch questions from API
-  const fetchQuestions = async () => {
+  // Special sections state
+  const [showReportedErrors, setShowReportedErrors] = useState<boolean>(false);
+  const [reportedErrors, setReportedErrors] = useState<ReportedError[]>([]);
+  
+  // Refs for preventing multiple fetches and tracking mounted state
+  const isMountedRef = useRef(true);
+  const isFetchingRef = useRef(false);
+  
+  // Helper function to render text with LaTeX support (simplified for now)
+  const renderMathText = (text: string) => {
+    if (!text) return text;
+    
+    // For now, just return the text as-is to avoid KaTeX rendering issues
+    // We can re-enable LaTeX rendering once we fix the loading issue
+    return text;
+  };
+  
+  // Fetch questions from API - memoized to prevent unnecessary re-creation
+  const fetchQuestions = useCallback(async () => {
+    if (isFetchingRef.current || !isMountedRef.current) {
+      console.log('Skipping fetch - already fetching or component unmounted');
+      return;
+    }
+    
+    console.log('Starting fetch questions...');
+    isFetchingRef.current = true;
     setLoading(true);
     setError(null);
     setSuccess(null);
+    
     try {
       const res = await fetch("/api/questions");
       if (!res.ok) throw new Error("Failed to fetch questions");
       const data = await res.json();
-      setQuestions(data);
-    } catch (err: any) {
-      setError(err.message || "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch error reports from localStorage (could be from API in future)
-  const fetchErrorReports = async () => {
-    try {
-      // For now, get error reports from localStorage
-      // In a real app, this would be an API call
-      const storedErrors = localStorage.getItem('questionErrorReports');
-      if (storedErrors) {
-        setReportedErrors(JSON.parse(storedErrors));
+      
+      if (isMountedRef.current) {
+        setQuestions(data);
+        console.log('Questions loaded:', data.length);
+        setReportedErrors([]); // Set empty array for now
       }
-    } catch (err) {
-      console.error('Failed to fetch error reports:', err);
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      if (isMountedRef.current) {
+        setError(err.message || "Unknown error");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isFetchingRef.current = false;
+      console.log('Fetch completed');
     }
-  };
-
-  // Function to add a new error report (can be called from other parts of the app)
-  const addErrorReport = (questionId: number, message: string, userAgent?: string) => {
-    const newError = {
-      questionId,
-      message,
-      timestamp: new Date().toISOString(),
-      userAgent: userAgent || navigator.userAgent,
-      resolved: false
-    };
-    
-    const updatedErrors = [...reportedErrors, newError];
-    setReportedErrors(updatedErrors);
-    localStorage.setItem('questionErrorReports', JSON.stringify(updatedErrors));
-  };
-
-  // Function to mark an error as resolved
-  const resolveErrorReport = (index: number) => {
-    const updatedErrors = [...reportedErrors];
-    updatedErrors[index].resolved = true;
-    setReportedErrors(updatedErrors);
-    localStorage.setItem('questionErrorReports', JSON.stringify(updatedErrors));
-  };
-
-  // Function to view error details
-  const viewErrorDetails = (error: any, index: number) => {
-    setSelectedError({ ...error, index });
-    setShowErrorModal(true);
-  };
-
-  // Function to resolve selected error from modal
-  const resolveSelectedError = () => {
-    if (selectedError) {
-      resolveErrorReport(selectedError.index);
-      setShowErrorModal(false);
-      setSelectedError(null);
-    }
-  };
-
-  // Function to clear all resolved errors
-  const clearResolvedErrors = () => {
-    const unresolved = reportedErrors.filter(error => !error.resolved);
-    setReportedErrors(unresolved);
-    localStorage.setItem('questionErrorReports', JSON.stringify(unresolved));
-  };
+  }, []); // Empty dependency array since this function doesn't depend on any state
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchQuestions();
-    fetchErrorReports();
-  }, []);
+    
+    // Cleanup function to handle unmounting
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchQuestions]); // Include fetchQuestions in dependencies since it's memoized
 
   // Update type and subcategory when exam changes
   const handleExamChange = (newExam: string) => {
@@ -799,25 +764,13 @@ export default function AdminPage() {
     
     // If formatted is an object with __html, use dangerouslySetInnerHTML
     if (typeof formatted === 'object' && formatted.__html) {
-      // Convert line breaks to <br> tags in the HTML
-      const htmlWithBreaks = formatted.__html.replace(/\n/g, '<br />');
       return (
-        <span dangerouslySetInnerHTML={{__html: htmlWithBreaks}} />
+        <span dangerouslySetInnerHTML={formatted} />
       );
     }
     
-    // Otherwise handle line breaks in plain text by splitting and rendering with <br>
-    const textWithBreaks = (formatted as string).split('\n');
-    return (
-      <span>
-        {textWithBreaks.map((line, index) => (
-          <React.Fragment key={index}>
-            {line}
-            {index < textWithBreaks.length - 1 && <br />}
-          </React.Fragment>
-        ))}
-      </span>
-    );
+    // Otherwise return plain text
+    return <span>{formatted as string}</span>;
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -922,13 +875,14 @@ export default function AdminPage() {
         </div>
 
         {/* Quick Analytics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <button
             onClick={() => {
               const isSelected = selectedExamType === 'GMAT';
               setSelectedExamType(isSelected ? null : 'GMAT');
               setSelectedQuestionType(null); // Reset question type when changing exam
               setSelectedSubcategory(null); // Reset subcategory when changing exam
+              setShowReportedErrors(false); // Reset reported errors when selecting exam
             }}
             className={`bg-white rounded-lg shadow-sm p-6 border transition-all text-left ${
               selectedExamType === 'GMAT' 
@@ -962,6 +916,7 @@ export default function AdminPage() {
               setSelectedExamType(isSelected ? null : 'LSAT');
               setSelectedQuestionType(null); // Reset question type when changing exam
               setSelectedSubcategory(null); // Reset subcategory when changing exam
+              setShowReportedErrors(false); // Reset reported errors when selecting exam
             }}
             className={`bg-white rounded-lg shadow-sm p-6 border transition-all text-left ${
               selectedExamType === 'LSAT' 
@@ -989,121 +944,164 @@ export default function AdminPage() {
             )}
           </button>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10 cursor-pointer hover:shadow-md transition-shadow"
-               onClick={() => setShowErrorReports(!showErrorReports)}>
+          <button
+            onClick={() => {
+              setShowReportedErrors(!showReportedErrors);
+              setSelectedExamType(null); // Reset exam selection when viewing reported errors
+              setSelectedQuestionType(null); // Reset question type
+              setSelectedSubcategory(null); // Reset subcategory
+            }}
+            className={`bg-white rounded-lg shadow-sm p-6 border transition-all text-left ${
+              showReportedErrors 
+                ? 'border-red-500 border-2 bg-red-50' 
+                : 'border-alarm-black/10 hover:border-red-500 hover:bg-red-50'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Reported Errors</p>
                 <p className="text-3xl font-semibold text-red-600">
-                  {reportedErrors.filter(error => !error.resolved).length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {reportedErrors.length > 0 && reportedErrors.filter(error => error.resolved).length > 0 && (
-                    `${reportedErrors.filter(error => error.resolved).length} resolved`
-                  )}
+                  {reportedErrors.length}
                 </p>
               </div>
               <div className="p-3 bg-red-100 rounded-full">
                 <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
             </div>
-            {showErrorReports && reportedErrors.length > 0 && (
+            {showReportedErrors && (
               <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-500">Recent error reports:</p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearResolvedErrors();
-                    }}
-                    className="text-xs text-red-600 hover:text-red-800 underline"
-                  >
-                    Clear Resolved
-                  </button>
+                <p className="text-xs text-gray-500 mb-1">View and manage reported question errors</p>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Reported Errors Section */}
+        {showReportedErrors && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-red-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg mr-3">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
                 </div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {reportedErrors.slice(0, 10).map((errorReport, index) => (
-                    <div 
-                      key={index} 
-                      className={`relative text-xs p-3 rounded cursor-pointer transition-all hover:shadow-sm ${
-                        errorReport.resolved 
-                          ? 'bg-green-50 border border-green-200' 
-                          : 'bg-red-50 border border-red-200 hover:bg-red-100'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewErrorDetails(errorReport, index);
-                      }}
-                    >
+                <h3 className="text-lg font-medium text-gray-900">Reported Question Errors ({reportedErrors.length})</h3>
+              </div>
+              {reportedErrors.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to clear all reported errors? This action cannot be undone.')) {
+                      errorReportingService.clearAllErrors();
+                      setReportedErrors([]);
+                    }
+                  }}
+                  className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+            
+            {reportedErrors.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="p-4 bg-gray-50 rounded-lg inline-block mb-4">
+                  <svg className="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Reported Errors</h4>
+                <p className="text-gray-600 mb-4">
+                  No question errors have been reported from the app yet.
+                </p>
+                <p className="text-sm text-gray-500">
+                  When users report errors through the app, they will appear here for admin review and resolution.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reportedErrors
+                  .sort((a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime())
+                  .map((error) => (
+                    <div key={error.id} className="bg-red-50 border border-red-200 rounded-lg p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-gray-700">Q#{errorReport.questionId}</span>
-                            {errorReport.resolved && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Resolved
-                              </span>
-                            )}
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <span className="text-sm font-medium text-red-800">
+                              Question ID: {error.questionId}
+                            </span>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <span className="text-sm text-gray-600">
+                              {error.exam} - {error.type}
+                            </span>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              error.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              error.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {error.status}
+                            </span>
                           </div>
-                          <div className="text-gray-600 truncate pr-2">
-                            {errorReport.message.length > 60 
-                              ? `${errorReport.message.slice(0, 60)}...` 
-                              : errorReport.message
-                            }
+                          
+                          <div className="mb-3">
+                            <p className="text-sm font-medium text-gray-900 mb-1">Question:</p>
+                            <p className="text-sm text-gray-700 bg-white p-2 rounded border">
+                              {renderMathText(error.questionText)}
+                            </p>
                           </div>
-                          <div className="text-gray-400 mt-1">
-                            {new Date(errorReport.timestamp).toLocaleDateString()} • Click to view details
+                          
+                          <div className="mb-3">
+                            <p className="text-sm font-medium text-gray-900 mb-1">Reported Error:</p>
+                            <p className="text-sm text-red-700 bg-white p-2 rounded border">
+                              {error.errorDescription}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center text-xs text-gray-500">
+                            <span>Reported: {new Date(error.reportedAt).toLocaleString()}</span>
                           </div>
                         </div>
-                        {!errorReport.resolved && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              resolveErrorReport(index);
+                        
+                        <div className="flex flex-col space-y-2 ml-4">
+                          <select
+                            value={error.status}
+                            onChange={(e) => {
+                              const newStatus = e.target.value as ReportedError['status'];
+                              errorReportingService.updateErrorStatus(error.id, newStatus);
+                              setReportedErrors(prev => 
+                                prev.map(err => err.id === error.id ? { ...err, status: newStatus } : err)
+                              );
                             }}
-                            className="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                            title="Mark as resolved"
+                            className="text-xs border border-gray-300 rounded px-2 py-1"
                           >
-                            Resolve
+                            <option value="pending">Pending</option>
+                            <option value="reviewed">Reviewed</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                          
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this error report?')) {
+                                errorReportingService.deleteError(error.id);
+                                setReportedErrors(prev => prev.filter(err => err.id !== error.id));
+                              }
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                          >
+                            Delete
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                  {reportedErrors.length > 10 && (
-                    <div className="text-xs text-gray-500 text-center py-2">
-                      Showing 10 of {reportedErrors.length} error reports
-                    </div>
-                  )}
-                </div>
+                  ))
+                }
               </div>
             )}
           </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-alarm-black/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Question Quality</p>
-                <p className="text-3xl font-semibold text-blue-600">
-                  {questions.filter(q => q.explanation && q.explanation.trim()).length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {questions.length > 0 
-                    ? `${Math.round((questions.filter(q => q.explanation && q.explanation.trim()).length / questions.length) * 100)}% have explanations`
-                    : 'No questions yet'
-                  }
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Question Type Breakdown */}
         {selectedExamType && (
@@ -1229,70 +1227,64 @@ export default function AdminPage() {
                                     {question.difficulty}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="text-xs text-gray-500 mr-2">
-                                    {question.createdAt ? new Date(question.createdAt).toLocaleDateString() : 'No date'}
-                                  </div>
-                                  <button
-                                    onClick={() => setEditingQuestion(question)}
-                                    className="text-alarm-blue hover:text-alarm-blue-dark bg-alarm-blue-light hover:bg-alarm-blue-light/80 border-2 border-alarm-blue/30 hover:border-alarm-blue/50 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
-                                    title="Edit question"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    onClick={() => deleteQuestion(question.id)}
-                                    className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 border-2 border-red-300 hover:border-red-500 p-2 rounded-lg transition-all duration-200 font-semibold shadow-sm"
-                                    title="Delete question"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
+                                <div className="text-xs text-gray-500">
+                                  {question.createdAt ? new Date(question.createdAt).toLocaleDateString() : 'No date'}
                                 </div>
                               </div>
                               
                               <div className="mb-3">
                                 <div className="font-medium text-gray-900 mb-2">Question:</div>
                                 <div className="text-gray-700 text-sm leading-relaxed">
-                                  {question.text && question.text.length > 200 
-                                    ? <>{renderTextWithLatex(question.text.substring(0, 200))}...</>
-                                    : renderTextWithLatex(question.text || 'No question text available')
-                                  }
+                                  {question.text ? (
+                                    question.text.length > 200 ? (
+                                      <div>
+                                        {renderMathText(question.text.substring(0, 200))}
+                                        <span className="text-gray-500">...</span>
+                                      </div>
+                                    ) : (
+                                      renderMathText(question.text)
+                                    )
+                                  ) : (
+                                    'No question text available'
+                                  )}
                                 </div>
                               </div>
                               
-                              <div className="mb-3">
-                                <div className="font-medium text-gray-900 mb-2">Answer Choices:</div>
-                                <div className="space-y-1">
-                                  {question.choices && question.choices.map((choice, choiceIndex) => (
-                                    <div key={choiceIndex} className={`text-sm p-2 rounded ${
-                                      choice === question.correctAnswer 
-                                        ? 'bg-green-50 border border-green-200 text-green-800' 
-                                        : 'bg-gray-50 text-gray-700'
-                                    }`}>
-                                      <span className="font-medium mr-2">
-                                        {String.fromCharCode(65 + choiceIndex)}.
-                                      </span>
-                                      {renderTextWithLatex(choice)}
-                                      {choice === question.correctAnswer && (
-                                        <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
-                                      )}
-                                    </div>
-                                  ))}
+                              {/* Answer Choices */}
+                              {question.choices && question.choices.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                  <div className="font-medium text-gray-900 mb-2 text-sm">Answer Choices:</div>
+                                  <div className="space-y-1">
+                                    {question.choices.map((choice, choiceIndex) => (
+                                      <div key={choiceIndex} className="flex items-start text-xs">
+                                        <span className={`inline-block w-6 h-6 rounded-full text-center leading-6 mr-2 flex-shrink-0 ${
+                                          choice === question.correctAnswer 
+                                            ? 'bg-green-100 text-green-800 font-bold' 
+                                            : 'bg-gray-100 text-gray-600'
+                                        }`}>
+                                          {String.fromCharCode(65 + choiceIndex)}
+                                        </span>
+                                        <div className="text-gray-700 flex-1 mt-0.5">
+                                          {renderMathText(choice)}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                               
                               {question.explanation && (
                                 <div className="mt-3 pt-3 border-t border-gray-100">
                                   <div className="font-medium text-gray-900 mb-1 text-sm">Explanation:</div>
                                   <div className="text-gray-600 text-sm">
-                                    {question.explanation.length > 150 
-                                      ? <>{renderTextWithLatex(question.explanation.substring(0, 150))}...</>
-                                      : renderTextWithLatex(question.explanation)
-                                    }
+                                    {question.explanation.length > 150 ? (
+                                      <div>
+                                        {renderMathText(question.explanation.substring(0, 150))}
+                                        <span className="text-gray-500">...</span>
+                                      </div>
+                                    ) : (
+                                      renderMathText(question.explanation)
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -1908,128 +1900,46 @@ export default function AdminPage() {
 
         {/* Edit Question Modal */}
         {editingQuestion && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-lg max-w-4xl w-full my-8 shadow-2xl">
-              <div className="max-h-[calc(100vh-4rem)] overflow-y-auto">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 pb-4 border-b">
-                    <h2 className="text-2xl font-bold text-gray-900">Edit Question</h2>
-                    <button
-                      onClick={() => setEditingQuestion(null)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="pb-6">
-                    <EditQuestionForm 
-                      question={editingQuestion}
-                      onSave={async (updatedQuestion) => {
-                        // Update question logic here
-                        try {
-                          const res = await fetch("/api/questions", {
-                            method: "PUT",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(updatedQuestion),
-                          });
-                          if (!res.ok) throw new Error("Failed to update question");
-                          await fetchQuestions();
-                          setEditingQuestion(null);
-                          setSuccess("Question updated successfully!");
-                        } catch (err: any) {
-                          setError("Failed to update question");
-                        }
-                      }}
-                      onCancel={() => setEditingQuestion(null)}
-                    />
-                  </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Question</h2>
+                  <button
+                    onClick={() => setEditingQuestion(null)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
+
+                <EditQuestionForm 
+                  question={editingQuestion}
+                  onSave={async (updatedQuestion) => {
+                    // Update question logic here
+                    try {
+                      const res = await fetch("/api/questions", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedQuestion),
+                      });
+                      if (!res.ok) throw new Error("Failed to update question");
+                      await fetchQuestions();
+                      setEditingQuestion(null);
+                      setSuccess("Question updated successfully!");
+                    } catch (err: any) {
+                      setError("Failed to update question");
+                    }
+                  }}
+                  onCancel={() => setEditingQuestion(null)}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
-      
-      {/* Error Details Modal */}
-      {showErrorModal && selectedError && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Error Report Details</h2>
-              <button
-                onClick={() => {
-                  setShowErrorModal(false);
-                  setSelectedError(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">Question ID:</span>
-                  <span className="text-lg font-bold text-blue-600">#{selectedError.questionId}</span>
-                </div>
-                {selectedError.resolved && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                    Resolved
-                  </span>
-                )}
-              </div>
-              
-              <div>
-                <span className="text-sm font-medium text-gray-700 block mb-2">Error Message:</span>
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-gray-900 whitespace-pre-wrap">{selectedError.message}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Reported:</span>
-                  <p className="text-gray-600">{new Date(selectedError.timestamp).toLocaleString()}</p>
-                </div>
-                
-                {selectedError.userAgent && (
-                  <div>
-                    <span className="font-medium text-gray-700">User Agent:</span>
-                    <p className="text-gray-600 text-xs break-all">{selectedError.userAgent}</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    setShowErrorModal(false);
-                    setSelectedError(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Close
-                </button>
-                
-                {!selectedError.resolved && (
-                  <button
-                    onClick={resolveSelectedError}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                  >
-                    Mark as Resolved
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2053,77 +1963,6 @@ function EditQuestionForm({
   const [subcategory, setSubcategory] = useState(question.subcategory);
   const [difficulty, setDifficulty] = useState(question.difficulty);
   const [loading, setLoading] = useState(false);
-
-  // Update type and subcategory when exam changes
-  const handleExamChange = (newExam: string) => {
-    setExam(newExam);
-    // Reset to first available type and subcategory for the new exam
-    const availableTypes = QUESTION_TYPES[newExam as keyof typeof QUESTION_TYPES];
-    const firstType = availableTypes[0];
-    setType(firstType.id);
-    setSubcategory(QUESTION_SUBCATEGORIES[firstType.id as keyof typeof QUESTION_SUBCATEGORIES][0]);
-  };
-
-  // Update subcategory when type changes
-  const handleTypeChange = (newType: string) => {
-    setType(newType);
-    // Reset to first available subcategory for the new type
-    setSubcategory(QUESTION_SUBCATEGORIES[newType as keyof typeof QUESTION_SUBCATEGORIES][0]);
-  };
-
-  // Insert LaTeX symbol at cursor position for edit form
-  const insertLatexSymbolEdit = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
-    let textarea: HTMLTextAreaElement | HTMLInputElement | null = null;
-    
-    if (target === 'choice' && choiceIndex !== undefined) {
-      textarea = document.getElementById(`edit-choice-${choiceIndex}-textarea`) as HTMLInputElement;
-    } else {
-      textarea = document.getElementById(`edit-${target}-textarea`) as HTMLTextAreaElement | HTMLInputElement;
-    }
-    
-    if (textarea) {
-      const start = textarea.selectionStart || 0;
-      const end = textarea.selectionEnd || 0;
-      const currentValue = textarea.value;
-      
-      let newValue: string;
-      let newCursorPos: number;
-      
-      if (latex.includes('{}')) {
-        // For symbols with placeholders like \sqrt{}, \frac{}{}
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.indexOf('{}');
-      } else {
-        // For simple symbols
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.length;
-      }
-      
-      // Update the appropriate state
-      switch (target) {
-        case 'question':
-          setText(newValue);
-          break;
-        case 'answer':
-          setCorrectAnswer(newValue);
-          break;
-        case 'choice':
-          if (choiceIndex !== undefined) {
-            updateChoice(choiceIndex, newValue);
-          }
-          break;
-        case 'explanation':
-          setExplanation(newValue);
-          break;
-      }
-      
-      // Set cursor position after state update
-      setTimeout(() => {
-        textarea!.focus();
-        textarea!.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2151,31 +1990,16 @@ function EditQuestionForm({
     setChoices(newChoices);
   };
 
-  // Helper function to render text with LaTeX support
-  const renderTextWithLatex = (text: string) => {
-    if (!text) return '';
-    const formatted = formatLatexPreview(text);
-    
-    // If formatted is an object with __html, use dangerouslySetInnerHTML
-    if (typeof formatted === 'object' && formatted.__html) {
-      return <span dangerouslySetInnerHTML={formatted} />;
-    }
-    
-    // Otherwise return plain text
-    return text;
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Enhanced form fields matching the add question form */}
+      {/* Form fields similar to the add question form */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Exam Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">Exam</label>
           <select
-            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
+            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={exam}
-            onChange={(e) => handleExamChange(e.target.value)}
+            onChange={(e) => setExam(e.target.value)}
           >
             {EXAMS.map((ex) => (
               <option key={ex} value={ex}>{ex}</option>
@@ -2183,41 +2007,12 @@ function EditQuestionForm({
           </select>
         </div>
 
-        {/* Question Type Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">Question Type</label>
-          <select
-            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
-            value={type}
-            onChange={(e) => handleTypeChange(e.target.value)}
-          >
-            {QUESTION_TYPES[exam as keyof typeof QUESTION_TYPES].map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Subcategory Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">Subcategory</label>
-          <select
-            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
-            value={subcategory}
-            onChange={(e) => setSubcategory(e.target.value as Subcategory)}
-          >
-            {QUESTION_SUBCATEGORIES[type as keyof typeof QUESTION_SUBCATEGORIES].map((sub) => (
-              <option key={sub} value={sub}>{sub}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Difficulty Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">Difficulty</label>
           <select
-            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
+            className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value as DifficultyID)}
+            onChange={(e) => setDifficulty(e.target.value)}
           >
             {DIFFICULTIES.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
@@ -2226,199 +2021,51 @@ function EditQuestionForm({
         </div>
       </div>
 
-      {/* Question Text with LaTeX Support */}
       <div>
         <label className="block text-sm font-semibold text-gray-900 mb-2">Question Text</label>
-        
-        {/* LaTeX Help Section */}
-        <div className="mb-3 p-3 bg-alarm-blue-light/20 rounded-lg border border-alarm-blue/20">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">💡 Math Symbols Help</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-3">
-            {LATEX_SYMBOLS.map((symbol, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => insertLatexSymbolEdit(symbol.latex, 'question')}
-                className="text-sm font-semibold bg-white border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
-                title={`${symbol.label}: ${symbol.description}`}
-              >
-                {symbol.description}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-800">
-            <strong>Examples:</strong> x^2 → x², \sqrt{5} → √5, \frac{1}{2} → ½
-          </p>
-        </div>
-
         <textarea
-          id="edit-question-textarea"
-          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Enter your question here... Use LaTeX for math: x^2, \sqrt{5}, \frac{1}{2}"
           required
         />
-
-        {/* Live Preview */}
-        {text && (
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
-            <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
-            <div className="text-gray-900 font-medium">
-              {renderTextWithLatex(text)}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Answer Choices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Correct Answer */}
-        <div>
-          <label className="block text-sm font-medium text-green-700 mb-2">
-            ✓ Correct Answer
-          </label>
-          
-          {/* LaTeX Help for Answer */}
-          <div className="mb-2">
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("\\sqrt{}", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-            >
-              √
-            </button>
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("\\frac{}{}", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-            >
-              fraction
-            </button>
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("^", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 shadow-sm text-green-800"
-            >
-              x²
-            </button>
-          </div>
-
-          <input
-            id="edit-answer-textarea"
-            className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
-            placeholder="Enter the correct answer..."
-            required
-          />
-
-          {/* Answer Preview */}
-          {correctAnswer && (
-            <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-              <span className="text-xs text-green-700 font-medium">Preview: </span>
-              <span className="text-green-800">{renderTextWithLatex(correctAnswer)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Other Choices */}
-        <div>
-          <label className="block text-sm font-medium text-alarm-black mb-2">Other Choices</label>
-          <div className="space-y-2">
-            {choices.map((choice, index) => (
-              <div key={index + 1}>
-                <div className="mb-1">
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbolEdit("\\sqrt{}", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
-                  >
-                    √
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbolEdit("\\frac{}{}", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
-                  >
-                    fraction
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbolEdit("^", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
-                  >
-                    x²
-                  </button>
-                </div>
-                <input
-                  id={`edit-choice-${index}-textarea`}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
-                  value={choice}
-                  onChange={(e) => updateChoice(index, e.target.value)}
-                  placeholder={`Choice ${String.fromCharCode(66 + index)}...`}
-                  required
-                />
-                
-                {/* Choice Preview */}
-                {choice && (
-                  <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
-                    <span className="text-xs text-gray-700 font-medium">Preview: </span>
-                    <span className="text-gray-900 font-medium">{renderTextWithLatex(choice)}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Explanation */}
       <div>
-        <label className="block text-sm font-medium text-alarm-black mb-2">Explanation (Optional)</label>
-        
-        {/* LaTeX Help for Explanation */}
-        <div className="mb-2">
-          <button
-            type="button"
-            onClick={() => insertLatexSymbolEdit("\\sqrt{}", 'explanation')}
-            className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 mr-2 shadow-sm text-blue-800"
-          >
-            √
-          </button>
-          <button
-            type="button"
-            onClick={() => insertLatexSymbolEdit("\\frac{}{}", 'explanation')}
-            className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 mr-2 shadow-sm text-blue-800"
-          >
-            fraction
-          </button>
-          <button
-            type="button"
-            onClick={() => insertLatexSymbolEdit("^", 'explanation')}
-            className="text-sm font-semibold bg-blue-100 border-2 border-blue-400 rounded-md px-3 py-2 hover:bg-blue-200 hover:border-blue-600 transition-all duration-200 shadow-sm text-blue-800"
-          >
-            x²
-          </button>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Correct Answer</label>
+        <input
+          type="text"
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={correctAnswer}
+          onChange={(e) => setCorrectAnswer(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Other Answer Choices</label>
+        <div className="space-y-2">
+          {choices.map((choice, index) => (
+            <input
+              key={index}
+              type="text"
+              placeholder={`Choice ${String.fromCharCode(66 + index)}`}
+              className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={choice}
+              onChange={(e) => updateChoice(index, e.target.value)}
+              required
+            />
+          ))}
         </div>
-        
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Explanation (Optional)</label>
         <textarea
-          id="edit-explanation-textarea"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
+          className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
-          placeholder="Enter an explanation for the answer..."
         />
-        
-        {/* Explanation Preview */}
-        {explanation && (
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
-            <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
-            <div className="text-gray-900 font-medium">
-              {renderTextWithLatex(explanation)}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="flex gap-4 pt-4">
