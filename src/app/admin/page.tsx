@@ -235,17 +235,17 @@ const formatLatexPreview = (text: string): { __html: string } | string => {
 const EXAMS = ["GMAT", "LSAT"] as const;
 const QUESTION_TYPES = {
   GMAT: [
-    { id: "Quantitative", name: "Quantitative Reasoning" },
-    { id: "Verbal", name: "Verbal Reasoning" },
-    { id: "Data Insights", name: "Data Insights" },
+    { id: "quantitative", name: "Quantitative Reasoning" },
+    { id: "verbal", name: "Verbal Reasoning" },
+    { id: "data", name: "Data Insights" },
   ],
   LSAT: [
-    { id: "Reading Comprehension", name: "Reading Comprehension" },
-    { id: "Logical Reasoning", name: "Logical Reasoning" },
+    { id: "reading", name: "Reading Comprehension" },
+    { id: "logical", name: "Logical Reasoning" },
   ],
 } as const;
 const QUESTION_SUBCATEGORIES = {
-  "Quantitative": [
+  "quantitative": [
     "Linear and Quadratic Equations", 
     "Properties of Numbers", 
     "Roots and Exponents", 
@@ -261,10 +261,10 @@ const QUESTION_SUBCATEGORIES = {
     "GMAT Geometry", 
     "Functions and Sequences"
   ],
-  "Verbal": ["Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
-  "Data Insights": ["Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
-  "Reading Comprehension": ["Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
-  "Logical Reasoning": ["Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
+  "verbal": ["Main Idea", "Primary Purpose", "Inference", "Detail", "Function/Purpose of Sentence or Paragraph", "Strengthen/Weaken", "Author's Tone or Attitude", "Logical Structure or Flow", "Evaluate or Resolve Discrepancy"],
+  "data": ["Table Analysis", "Graphics Interpretation", "Two-Part Analysis", "Multi-Source Reasoning", "Data Sufficiency (non-quantitative)"],
+  "reading": ["Main Point", "Primary Purpose", "Author's Attitude/Tone", "Passage Organization", "Specific Detail", "Inference", "Function", "Analogy", "Application", "Strengthen/Weaken", "Comparative Reading"],
+  "logical": ["Assumption (Necessary)", "Assumption (Sufficient)", "Strengthen", "Weaken", "Flaw", "Inference", "Must Be True", "Most Strongly Supported", "Principle (Apply)", "Principle (Identify)", "Parallel Reasoning", "Parallel Flaw", "Resolve the Paradox", "Main Point", "Method of Reasoning", "Role in Argument", "Point at Issue", "Argument Evaluation"],
 } as const;
 const DIFFICULTIES = [
   { id: "easy", name: "Easy" },
@@ -1114,7 +1114,8 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {QUESTION_TYPES[selectedExamType as keyof typeof QUESTION_TYPES].map((questionType) => {
                 const breakdown = getQuestionTypeBreakdown(selectedExamType);
-                const typeData = breakdown[questionType.name] || { total: 0, subcategories: {} };
+                // Use questionType.id to match the actual question type values in the database
+                const typeData = breakdown[questionType.id] || { total: 0, subcategories: {} };
                 const isSelected = selectedQuestionType === questionType.id;
                 
                 // Get total number of defined subcategories for this question type
