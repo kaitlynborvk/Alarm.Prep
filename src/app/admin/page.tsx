@@ -131,8 +131,8 @@ export default function AdminPage() {
     QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id as keyof typeof QUESTION_SUBCATEGORIES][0]
   );
   const [text, setText] = useState("");
-  const [correctAnswer, setCorrectAnswer] = useState("");
   const [choices, setChoices] = useState(["", "", "", "", ""]);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -313,7 +313,7 @@ export default function AdminPage() {
   };
 
   // Handle paste events to auto-wrap LaTeX
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'choice' | 'explanation', choiceIndex?: number) => {
     e.preventDefault();
     
     const pastedText = e.clipboardData.getData('text');
@@ -331,15 +331,12 @@ export default function AdminPage() {
       case 'question':
         setText(newValue);
         break;
-      case 'answer':
-        setCorrectAnswer(newValue);
-        break;
       case 'explanation':
         setExplanation(newValue);
         break;
       case 'choice':
         if (choiceIndex !== undefined) {
-          updateChoice(choiceIndex + 1, newValue);
+          updateChoice(choiceIndex, newValue);
         }
         break;
     }
@@ -353,7 +350,7 @@ export default function AdminPage() {
   };
 
   // Insert LaTeX symbol at cursor position - wraps in $...$ for KaTeX
-  const insertLatexSymbol = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+  const insertLatexSymbol = (latex: string, target: 'question' | 'choice' | 'explanation', choiceIndex?: number) => {
     let textarea: HTMLTextAreaElement | null = null;
     
     if (target === 'choice' && choiceIndex !== undefined) {
@@ -387,15 +384,12 @@ export default function AdminPage() {
         case 'question':
           setText(newValue);
           break;
-        case 'answer':
-          setCorrectAnswer(newValue);
-          break;
         case 'explanation':
           setExplanation(newValue);
           break;
         case 'choice':
           if (choiceIndex !== undefined) {
-            updateChoice(choiceIndex + 1, newValue);
+            updateChoice(choiceIndex, newValue);
           }
           break;
       }
@@ -411,11 +405,19 @@ export default function AdminPage() {
   // Add question handler (POST to API)
   const addQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    const allChoices = [correctAnswer, ...choices.slice(1)];
-    if (allChoices.some(choice => !choice.trim())) {
+    
+    // Validate all choices are filled
+    if (choices.some(choice => !choice.trim())) {
       alert("Please fill in all 5 answer choices");
       return;
     }
+    
+    // Validate a correct answer is selected
+    if (correctAnswerIndex === null) {
+      alert("Please select which choice is the correct answer");
+      return;
+    }
+    
     console.log('Submitting question with difficulty:', difficulty);
     setLoading(true);
     setError(null);
@@ -429,8 +431,8 @@ export default function AdminPage() {
           type,
           subcategory,
           text: text.trim(),
-          correctAnswer: correctAnswer.trim(),
-          choices: allChoices,
+          correctAnswer: choices[correctAnswerIndex].trim(),
+          choices: choices.map(choice => choice.trim()),
           difficulty,
           explanation: explanation.trim(),
         }),
@@ -441,8 +443,8 @@ export default function AdminPage() {
       setExam(EXAMS[0]);
       setType(QUESTION_TYPES[EXAMS[0]][0].id);
       setSubcategory(QUESTION_SUBCATEGORIES[QUESTION_TYPES[EXAMS[0]][0].id][0]);
-      setCorrectAnswer("");
       setChoices(["", "", "", "", ""]);
+      setCorrectAnswerIndex(null);
       setDifficulty(DIFFICULTIES[0].id);
       setExplanation("");
       setSuccess("Question added successfully!");
@@ -1364,93 +1366,49 @@ export default function AdminPage() {
             </div>
 
             {/* Answer Choices */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Correct Answer */}
-              <div>
-                <label className="block text-sm font-medium text-green-700 mb-2">
-                  ✓ Correct Answer
-                </label>
-                
-                {/* LaTeX Help for Answer */}
-                <div className="mb-2">
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbol("\\sqrt{}", 'answer')}
-                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-                  >
-                    √
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbol("\\frac{}{}", 'answer')}
-                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-                  >
-                    fraction
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertLatexSymbol("^", 'answer')}
-                    className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 shadow-sm text-green-800"
-                  >
-                    x²
-                  </button>
-                </div>
-
-                <input
-                  id="answer-textarea"
-                  className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
-                  value={correctAnswer}
-                  onChange={(e) => setCorrectAnswer(e.target.value)}
-                  onPaste={(e) => handlePaste(e, 'answer')}
-                  placeholder="Enter the correct answer..."
-                  required
-                />
-
-                {/* Answer Preview */}
-                {correctAnswer && (
-                  <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-                    <span className="text-xs text-green-700 font-medium">Preview: </span>
-                    <span className="text-green-800">{formatLatexPreview(correctAnswer)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Other Choices */}
-              <div>
-                <label className="block text-sm font-medium text-alarm-black mb-2">Other Choices</label>
-                <div className="space-y-2">
-                  {choices.slice(1).map((choice, index) => (
-                    <div key={index + 1}>
-                      <div className="mb-1">
+            <div>
+              <label className="block text-sm font-medium text-alarm-black mb-4">Answer Choices</label>
+              <p className="text-sm text-gray-600 mb-4">Enter all 5 answer choices below, then click "Correct Answer" next to the right one.</p>
+              
+              <div className="space-y-4">
+                {choices.map((choice, index) => (
+                  <div key={index} className="flex gap-3">
+                    {/* Choice Input */}
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <span className="text-sm font-medium text-gray-700 mr-2">Choice {String.fromCharCode(65 + index)}</span>
+                        
+                        {/* LaTeX Helper Buttons */}
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("\\sqrt{}", 'choice', index)}
-                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
+                          className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 mr-1 text-gray-700"
                         >
                           √
                         </button>
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("\\frac{}{}", 'choice', index)}
-                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
+                          className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 mr-1 text-gray-700"
                         >
                           fraction
                         </button>
                         <button
                           type="button"
                           onClick={() => insertLatexSymbol("^", 'choice', index)}
-                          className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
+                          className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 text-gray-700"
                         >
                           x²
                         </button>
                       </div>
+                      
                       <input
                         id={`choice-${index}-textarea`}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                         value={choice}
-                        onChange={(e) => updateChoice(index + 1, e.target.value)}
+                        onChange={(e) => updateChoice(index, e.target.value)}
                         onPaste={(e) => handlePaste(e, 'choice', index)}
-                        placeholder={`Choice ${index + 2}...`}
+                        placeholder={`Enter choice ${String.fromCharCode(65 + index)}...`}
                         required
                       />
                       
@@ -1462,9 +1420,33 @@ export default function AdminPage() {
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
+                    
+                    {/* Correct Answer Button */}
+                    <div className="flex items-end pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setCorrectAnswerIndex(index)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 min-w-[120px] ${
+                          correctAnswerIndex === index
+                            ? 'bg-green-600 text-white border-2 border-green-600 shadow-lg'
+                            : 'bg-white text-green-600 border-2 border-green-300 hover:bg-green-50 hover:border-green-500'
+                        }`}
+                      >
+                        {correctAnswerIndex === index ? '✓ Correct' : 'Set Correct'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
+              
+              {/* Show which answer is selected */}
+              {correctAnswerIndex !== null && (
+                <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-sm text-green-800">
+                    <span className="font-medium">Correct Answer:</span> Choice {String.fromCharCode(65 + correctAnswerIndex)} - {choices[correctAnswerIndex]}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Explanation */}
@@ -1952,8 +1934,10 @@ function EditQuestionForm({
   onCancel: () => void;
 }) {
   const [text, setText] = useState(question.text);
-  const [correctAnswer, setCorrectAnswer] = useState(question.correctAnswer);
-  const [choices, setChoices] = useState(question.choices.slice(1)); // Exclude correct answer
+  const [choices, setChoices] = useState(question.choices);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(
+    question.choices.findIndex(choice => choice === question.correctAnswer)
+  );
   const [explanation, setExplanation] = useState(question.explanation || "");
   const [exam, setExam] = useState(question.exam);
   const [type, setType] = useState(question.type);
@@ -2033,7 +2017,7 @@ function EditQuestionForm({
   };
 
   // Handle paste events to auto-wrap LaTeX for edit form
-  const handlePasteEdit = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+  const handlePasteEdit = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'choice' | 'explanation', choiceIndex?: number) => {
     e.preventDefault();
     
     const pastedText = e.clipboardData.getData('text');
@@ -2050,9 +2034,6 @@ function EditQuestionForm({
     switch (target) {
       case 'question':
         setText(newValue);
-        break;
-      case 'answer':
-        setCorrectAnswer(newValue);
         break;
       case 'explanation':
         setExplanation(newValue);
@@ -2073,7 +2054,7 @@ function EditQuestionForm({
   };
 
   // Insert LaTeX symbol at cursor position for edit form - wraps in $...$ for KaTeX
-  const insertLatexSymbolEdit = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+  const insertLatexSymbolEdit = (latex: string, target: 'question' | 'choice' | 'explanation', choiceIndex?: number) => {
     let textarea: HTMLTextAreaElement | HTMLInputElement | null = null;
     
     if (target === 'choice' && choiceIndex !== undefined) {
@@ -2107,9 +2088,6 @@ function EditQuestionForm({
         case 'question':
           setText(newValue);
           break;
-        case 'answer':
-          setCorrectAnswer(newValue);
-          break;
         case 'choice':
           if (choiceIndex !== undefined) {
             updateChoice(choiceIndex, newValue);
@@ -2130,13 +2108,26 @@ function EditQuestionForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all choices are filled
+    if (choices.some(choice => !choice.trim())) {
+      alert("Please fill in all 5 answer choices");
+      return;
+    }
+    
+    // Validate a correct answer is selected
+    if (correctAnswerIndex === null) {
+      alert("Please select which choice is the correct answer");
+      return;
+    }
+    
     setLoading(true);
     try {
       await onSave({
         ...question,
         text,
-        correctAnswer,
-        choices: [correctAnswer, ...choices],
+        correctAnswer: choices[correctAnswerIndex].trim(),
+        choices: choices.map(choice => choice.trim()),
         explanation,
         exam,
         type,
@@ -2266,93 +2257,49 @@ function EditQuestionForm({
       </div>
 
       {/* Answer Choices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Correct Answer */}
-        <div>
-          <label className="block text-sm font-medium text-green-700 mb-2">
-            ✓ Correct Answer
-          </label>
-          
-          {/* LaTeX Help for Answer */}
-          <div className="mb-2">
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("\\sqrt{}", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-            >
-              √
-            </button>
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("\\frac{}{}", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 mr-2 shadow-sm text-green-800"
-            >
-              fraction
-            </button>
-            <button
-              type="button"
-              onClick={() => insertLatexSymbolEdit("^", 'answer')}
-              className="text-sm font-semibold bg-green-100 border-2 border-green-400 rounded-md px-3 py-2 hover:bg-green-200 hover:border-green-600 transition-all duration-200 shadow-sm text-green-800"
-            >
-              x²
-            </button>
-          </div>
-
-          <input
-            id="edit-answer-textarea"
-            className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
-            onPaste={(e) => handlePasteEdit(e, 'answer')}
-            placeholder="Enter the correct answer..."
-            required
-          />
-
-          {/* Answer Preview */}
-          {correctAnswer && (
-            <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-              <span className="text-xs text-green-700 font-medium">Preview: </span>
-              <span className="text-green-800">{formatLatexPreview(correctAnswer)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Other Choices */}
-        <div>
-          <label className="block text-sm font-medium text-alarm-black mb-2">Other Choices</label>
-          <div className="space-y-2">
-            {choices.map((choice, index) => (
-              <div key={index + 1}>
-                <div className="mb-1">
+      <div>
+        <label className="block text-sm font-medium text-alarm-black mb-4">Answer Choices</label>
+        <p className="text-sm text-gray-600 mb-4">Enter all 5 answer choices below, then click "Correct Answer" next to the right one.</p>
+        
+        <div className="space-y-4">
+          {choices.map((choice, index) => (
+            <div key={index} className="flex gap-3">
+              {/* Choice Input */}
+              <div className="flex-1">
+                <div className="flex items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700 mr-2">Choice {String.fromCharCode(65 + index)}</span>
+                  
+                  {/* LaTeX Helper Buttons */}
                   <button
                     type="button"
                     onClick={() => insertLatexSymbolEdit("\\sqrt{}", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
+                    className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 mr-1 text-gray-700"
                   >
                     √
                   </button>
                   <button
                     type="button"
                     onClick={() => insertLatexSymbolEdit("\\frac{}{}", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 mr-2 shadow-sm text-gray-800"
+                    className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 mr-1 text-gray-700"
                   >
                     fraction
                   </button>
                   <button
                     type="button"
                     onClick={() => insertLatexSymbolEdit("^", 'choice', index)}
-                    className="text-sm font-semibold bg-gray-100 border-2 border-gray-400 rounded-md px-3 py-2 hover:bg-blue-50 hover:border-blue-500 transition-all duration-200 shadow-sm text-gray-800"
+                    className="text-xs font-semibold bg-gray-100 border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 text-gray-700"
                   >
                     x²
                   </button>
                 </div>
+                
                 <input
                   id={`edit-choice-${index}-textarea`}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                   value={choice}
                   onChange={(e) => updateChoice(index, e.target.value)}
                   onPaste={(e) => handlePasteEdit(e, 'choice', index)}
-                  placeholder={`Choice ${String.fromCharCode(66 + index)}...`}
+                  placeholder={`Enter choice ${String.fromCharCode(65 + index)}...`}
                   required
                 />
                 
@@ -2364,9 +2311,33 @@ function EditQuestionForm({
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+              
+              {/* Correct Answer Button */}
+              <div className="flex items-end pb-2">
+                <button
+                  type="button"
+                  onClick={() => setCorrectAnswerIndex(index)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 min-w-[120px] ${
+                    correctAnswerIndex === index
+                      ? 'bg-green-600 text-white border-2 border-green-600 shadow-lg'
+                      : 'bg-white text-green-600 border-2 border-green-300 hover:bg-green-50 hover:border-green-500'
+                  }`}
+                >
+                  {correctAnswerIndex === index ? '✓ Correct' : 'Set Correct'}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
+        
+        {/* Show which answer is selected */}
+        {correctAnswerIndex !== null && (
+          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-sm text-green-800">
+              <span className="font-medium">Correct Answer:</span> Choice {String.fromCharCode(65 + correctAnswerIndex)} - {choices[correctAnswerIndex]}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Explanation */}
