@@ -1,235 +1,45 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
-// Hybrid LaTeX preview formatter - renders sqrt and fractions with CSS, others as text
-const formatLatexPreview = (text: string): { __html: string } | string => {
-  if (!text) return '';
+// KaTeX-based LaTeX preview formatter - matches AlarmScreen rendering exactly
+const formatLatexPreview = (text: string) => {
+  if (!text) return text;
   
-  // Check if text contains sqrt or frac - if so, return HTML for React dangerouslySetInnerHTML
-  if (text.includes('\\sqrt{') || text.includes('\\frac{')) {
-    let processedText = text
-      // Convert common LaTeX symbols to Unicode equivalents first
-      .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
-      .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
-      .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-        // Superscripts: x^2 -> x², x^{10} -> x¹⁰, x^a -> xᵃ
-        const cleanExp = exp.replace(/[{}]/g, '');
-        const superscriptMap: { [key: string]: string } = {
-          '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-          'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
-          'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
-          't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
-          'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
-          'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
-          'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
-          '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
-        };
-        return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
-      })
-      .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
-        // Subscripts: x_1 -> x₁, x_{10} -> x₁₀
-        const cleanSub = sub.replace(/[{}]/g, '');
-        const subscriptMap: { [key: string]: string } = {
-          '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
-          '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
-        };
-        return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
-      })
-      .replace(/\\pi/g, 'π')
-      .replace(/\\alpha/g, 'α')
-      .replace(/\\beta/g, 'β')
-      .replace(/\\gamma/g, 'γ')
-      .replace(/\\delta/g, 'δ')
-      .replace(/\\epsilon/g, 'ε')
-      .replace(/\\zeta/g, 'ζ')
-      .replace(/\\eta/g, 'η')
-      .replace(/\\theta/g, 'θ')
-      .replace(/\\iota/g, 'ι')
-      .replace(/\\kappa/g, 'κ')
-      .replace(/\\lambda/g, 'λ')
-      .replace(/\\mu/g, 'μ')
-      .replace(/\\nu/g, 'ν')
-      .replace(/\\xi/g, 'ξ')
-      .replace(/\\omicron/g, 'ο')
-      .replace(/\\rho/g, 'ρ')
-      .replace(/\\sigma/g, 'σ')
-      .replace(/\\tau/g, 'τ')
-      .replace(/\\upsilon/g, 'υ')
-      .replace(/\\phi/g, 'φ')
-      .replace(/\\chi/g, 'χ')
-      .replace(/\\psi/g, 'ψ')
-      .replace(/\\omega/g, 'ω')
-      .replace(/\\infty/g, '∞')
-      .replace(/\\pm/g, '±')
-      .replace(/\\times/g, '×')
-      .replace(/\\div/g, '÷')
-      .replace(/\\neq/g, '≠')
-      .replace(/\\leq/g, '≤')
-      .replace(/\\geq/g, '≥')
-      .replace(/\\sum/g, '∑')
-      .replace(/\\int/g, '∫')
-      .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, '∑$1^$2') // Sum with limits: \sum_{i=1}^{n} -> ∑i=1^n
-      .replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, '∫$1^$2') // Integral with limits: \int_{a}^{b} -> ∫a^b
-      .replace(/\\partial/g, '∂')
-      .replace(/\\nabla/g, '∇');
-
-    // Recursive function to handle nested LaTeX expressions
-    const processNestedLatex = (str: string): string => {
-      let result = str;
-      let hasChanges = true;
-      
-      // Keep processing until no more changes are made
-      while (hasChanges) {
-        const before = result;
-        
-        // Handle fractions first (innermost expressions)
-        result = result.replace(/\\frac\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, numerator, denominator) => {
-          // Recursively process the numerator and denominator
-          const processedNum = processNestedLatex(numerator);
-          const processedDen = processNestedLatex(denominator);
-          return `<span class="fraction">
-            <span class="numerator">${processedNum}</span>
-            <span class="denominator">${processedDen}</span>
-          </span>`;
-        });
-        
-        // Handle square roots
-        result = result.replace(/\\sqrt\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
-          // Recursively process the content inside sqrt
-          const processedContent = processNestedLatex(content);
-          return `<span class="sqrt-symbol">
-            <span class="sqrt-radical">√</span><span class="sqrt-content">${processedContent}</span>
-          </span>`;
-        });
-        
-        // Handle superscripts and subscripts within the processed content
-        result = result.replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-          const cleanExp = exp.replace(/[{}]/g, '');
-          
-          // For single characters or simple numbers, use Unicode superscripts
-          if (cleanExp.length === 1 || /^\d+$/.test(cleanExp)) {
-            const superscriptMap: { [key: string]: string } = {
-              '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-              '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-              'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
-              'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
-              't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
-              'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
-              'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
-              'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
-              '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
-            };
-            return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
-          } else {
-            // For complex expressions, use CSS superscript
-            const processedExp = processNestedLatex(cleanExp);
-            return `<sup>${processedExp}</sup>`;
-          }
-        });
-        
-        result = result.replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
-          const cleanSub = sub.replace(/[{}]/g, '');
-          
-          // For single characters or simple numbers, use Unicode subscripts
-          if (cleanSub.length === 1 || /^\d+$/.test(cleanSub)) {
-            const subscriptMap: { [key: string]: string } = {
-              '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
-              '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
-              'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ',
-              'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 'v': 'ᵥ', 'x': 'ₓ'
-            };
-            return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
-          } else {
-            // For complex expressions, use CSS subscript
-            const processedSub = processNestedLatex(cleanSub);
-            return `<sub>${processedSub}</sub>`;
-          }
-        });
-        
-        hasChanges = (result !== before);
-      }
-      
-      return result;
-    };
-
-    // Apply the recursive processing
-    processedText = processNestedLatex(processedText);
+  // First, split the text by line breaks to handle each line separately
+  const lines = text.split('\n');
+  
+  return lines.map((line, lineIndex) => {
+    if (!line) return <br key={lineIndex} />; // Empty line becomes <br>
     
-    // Clean up any remaining backslashes except already processed ones
-    processedText = processedText.replace(/\\(?![a-zA-Z])/g, '');
-
-    return { __html: processedText };
-  }
-  
-  // Fallback to simple text conversion for non-sqrt/frac content
-  return text
-    .replace(/\$\$([^$]+)\$\$/g, '[$1]') // Display math: $$x$$ -> [x]
-    .replace(/\$([^$]+)\$/g, '$1') // Inline math: $x$ -> x
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // Fractions: \frac{a}{b} -> a/b
-    .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-      const cleanExp = exp.replace(/[{}]/g, '');
-      const superscriptMap: { [key: string]: string } = {
-        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
-        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-        'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
-        'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ',
-        't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
-        'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ',
-        'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ',
-        'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ',
-        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
-      };
-      return cleanExp.split('').map((char: string) => superscriptMap[char] || char).join('');
-    })
-    .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
-      const cleanSub = sub.replace(/[{}]/g, '');
-      const subscriptMap: { [key: string]: string } = {
-        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
-        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
-      };
-      return cleanSub.split('').map((char: string) => subscriptMap[char] || char).join('');
-    })
-    .replace(/\\pi/g, 'π')
-    .replace(/\\alpha/g, 'α')
-    .replace(/\\beta/g, 'β')
-    .replace(/\\gamma/g, 'γ')
-    .replace(/\\delta/g, 'δ')
-    .replace(/\\epsilon/g, 'ε')
-    .replace(/\\zeta/g, 'ζ')
-    .replace(/\\eta/g, 'η')
-    .replace(/\\theta/g, 'θ')
-    .replace(/\\iota/g, 'ι')
-    .replace(/\\kappa/g, 'κ')
-    .replace(/\\lambda/g, 'λ')
-    .replace(/\\mu/g, 'μ')
-    .replace(/\\nu/g, 'ν')
-    .replace(/\\xi/g, 'ξ')
-    .replace(/\\omicron/g, 'ο')
-    .replace(/\\rho/g, 'ρ')
-    .replace(/\\sigma/g, 'σ')
-    .replace(/\\tau/g, 'τ')
-    .replace(/\\upsilon/g, 'υ')
-    .replace(/\\phi/g, 'φ')
-    .replace(/\\chi/g, 'χ')
-    .replace(/\\psi/g, 'ψ')
-    .replace(/\\omega/g, 'ω')
-    .replace(/\\infty/g, '∞')
-    .replace(/\\pm/g, '±')
-    .replace(/\\times/g, '×')
-    .replace(/\\div/g, '÷')
-    .replace(/\\neq/g, '≠')
-    .replace(/\\leq/g, '≤')
-    .replace(/\\geq/g, '≥')
-    .replace(/\\sum/g, '∑')
-    .replace(/\\int/g, '∫')
-    .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, '∑$1^$2') // Sum with limits
-    .replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, '∫$1^$2') // Integral with limits
-    .replace(/\\partial/g, '∂')
-    .replace(/\\nabla/g, '∇')
-    .replace(/\\/g, '');
+    // Split line by LaTeX delimiters and render accordingly
+    // The regex captures both $...$ and $$...$$ patterns
+    const parts = line.split(/(\$\$.*?\$\$|\$[^$]*?\$)/g);
+    
+    const renderedParts = parts.map((part, index) => {
+      if (part.startsWith('$$') && part.endsWith('$$')) {
+        // Block math (display mode)
+        const mathContent = part.slice(2, -2);
+        return <BlockMath key={index} math={mathContent} />;
+      } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+        // Inline math
+        const mathContent = part.slice(1, -1);
+        return <InlineMath key={index} math={mathContent} />;
+      } else {
+        // Regular text
+        return part ? <span key={index}>{part}</span> : null;
+      }
+    }).filter(Boolean);
+    
+    return (
+      <React.Fragment key={lineIndex}>
+        {renderedParts}
+        {lineIndex < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
 };
 
 const EXAMS = ["GMAT", "LSAT"] as const;
@@ -244,6 +54,7 @@ const QUESTION_TYPES = {
     { id: "logical", name: "Logical Reasoning" },
   ],
 } as const;
+
 const QUESTION_SUBCATEGORIES = {
   "quantitative": [
     "Linear and Quadratic Equations", 
@@ -447,7 +258,101 @@ export default function AdminPage() {
     setSubcategory(QUESTION_SUBCATEGORIES[newType as keyof typeof QUESTION_SUBCATEGORIES][0]);
   };
 
-  // Insert LaTeX symbol at cursor position
+  // Auto-wrap LaTeX content function
+  const autoWrapLatex = (text: string): string => {
+    let result = text;
+    
+    // First, convert \( and \) delimiters to $ delimiters
+    result = result.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+    
+    // Convert \[ and \] delimiters to $$ delimiters for display math
+    result = result.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+    
+    // Common LaTeX patterns that need wrapping
+    const latexPatterns = [
+      /\\frac\{[^}]*\}\{[^}]*\}/g,           // \frac{}{} 
+      /\\sqrt\{[^}]*\}/g,                    // \sqrt{}
+      /\\[a-zA-Z]+\{[^}]*\}/g,              // Other LaTeX commands with braces
+      /\\[a-zA-Z]+/g,                       // LaTeX commands without braces
+      /\^[a-zA-Z0-9\{\}]+/g,                // Superscripts
+      /_[a-zA-Z0-9\{\}]+/g,                 // Subscripts
+    ];
+    
+    // Check if the text contains LaTeX patterns
+    const hasLatex = latexPatterns.some(pattern => pattern.test(result));
+    
+    if (hasLatex) {
+      // Split text by existing $ delimiters to avoid double-wrapping
+      const parts = result.split(/(\$[^$]*\$|\$\$[^$]*\$\$)/);
+      
+      result = parts.map(part => {
+        // If part is already wrapped in $...$ or $$...$$ or is just plain text, leave it
+        if ((part.startsWith('$') && part.endsWith('$')) || 
+            (part.startsWith('$$') && part.endsWith('$$'))) {
+          return part;
+        }
+        
+        // Check if this part contains LaTeX patterns
+        const partHasLatex = latexPatterns.some(pattern => pattern.test(part));
+        
+        if (partHasLatex) {
+          // Split by whitespace to wrap individual expressions
+          return part.split(/(\s+)/).map(segment => {
+            if (segment.trim() && latexPatterns.some(pattern => pattern.test(segment))) {
+              return `$${segment}$`;
+            }
+            return segment;
+          }).join('');
+        }
+        
+        return part;
+      }).join('');
+    }
+    
+    return result;
+  };
+
+  // Handle paste events to auto-wrap LaTeX
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+    e.preventDefault();
+    
+    const pastedText = e.clipboardData.getData('text');
+    const wrappedText = autoWrapLatex(pastedText);
+    
+    const textarea = e.target as HTMLTextAreaElement | HTMLInputElement;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const currentValue = textarea.value;
+    
+    const newValue = currentValue.substring(0, start) + wrappedText + currentValue.substring(end);
+    
+    // Update the appropriate state
+    switch (target) {
+      case 'question':
+        setText(newValue);
+        break;
+      case 'answer':
+        setCorrectAnswer(newValue);
+        break;
+      case 'explanation':
+        setExplanation(newValue);
+        break;
+      case 'choice':
+        if (choiceIndex !== undefined) {
+          updateChoice(choiceIndex + 1, newValue);
+        }
+        break;
+    }
+    
+    // Set cursor position after the pasted content
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + wrappedText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 10);
+  };
+
+  // Insert LaTeX symbol at cursor position - wraps in $...$ for KaTeX
   const insertLatexSymbol = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
     let textarea: HTMLTextAreaElement | null = null;
     
@@ -462,17 +367,19 @@ export default function AdminPage() {
       const end = textarea.selectionEnd;
       const currentValue = textarea.value;
       
+      // Wrap LaTeX in $...$ for KaTeX rendering
+      const wrappedLatex = `$${latex}$`;
       let newValue: string;
       let newCursorPos: number;
       
       if (latex.includes('{}')) {
         // For symbols with placeholders like \sqrt{}, \frac{}{}
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.indexOf('{}');
+        newValue = currentValue.substring(0, start) + wrappedLatex + currentValue.substring(end);
+        newCursorPos = start + wrappedLatex.indexOf('{}');
       } else {
         // For simple symbols
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.length;
+        newValue = currentValue.substring(0, start) + wrappedLatex + currentValue.substring(end);
+        newCursorPos = start + wrappedLatex.length;
       }
       
       // Update the appropriate state
@@ -682,8 +589,23 @@ export default function AdminPage() {
   // Get question type breakdown for a specific exam
   const getQuestionTypeBreakdown = (examType: string) => {
     const examQuestions = questions.filter(q => q.exam === examType);
+    
+    // Debug logging
+    console.log('=== DEBUG getQuestionTypeBreakdown ===');
+    console.log('examType:', examType);
+    console.log('total questions:', questions.length);
+    console.log('examQuestions length:', examQuestions.length);
+    if (examQuestions.length > 0) {
+      console.log('sample examQuestions:', examQuestions.slice(0, 3).map(q => ({
+        exam: q.exam,
+        type: q.type,
+        subcategory: q.subcategory
+      })));
+    }
+    
     const breakdown = examQuestions.reduce((acc, q) => {
-      const type = q.type;
+      // Normalize type to lowercase to match UI expectations
+      const type = q.type.toLowerCase();
       if (!acc[type]) {
         acc[type] = { total: 0, subcategories: {} };
       }
@@ -698,13 +620,17 @@ export default function AdminPage() {
       return acc;
     }, {} as Record<string, { total: number; subcategories: Record<string, number> }>);
     
+    console.log('breakdown result:', breakdown);
+    console.log('breakdown keys:', Object.keys(breakdown));
+    console.log('=== END DEBUG ===');
+    
     return breakdown;
   };
 
   // Get subcategory breakdown for a specific exam and question type
   const getSubcategoryBreakdown = (examType: string, questionType: string) => {
     const filteredQuestions = questions.filter(q => 
-      q.exam === examType && q.type === questionType
+      q.exam === examType && q.type.toLowerCase() === questionType.toLowerCase()
     );
     
     // Start with all defined subcategories for this question type, initialized to 0
@@ -732,7 +658,7 @@ export default function AdminPage() {
   const getSubcategoryQuestions = (examType: string, questionType: string, subcategory: string) => {
     return questions.filter(q => 
       q.exam === examType && 
-      q.type === questionType && 
+      q.type.toLowerCase() === questionType.toLowerCase() && 
       q.subcategory === subcategory
     );
   };
@@ -790,34 +716,6 @@ export default function AdminPage() {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
-  };
-
-  // Helper function to render text with LaTeX support
-  const renderTextWithLatex = (text: string) => {
-    if (!text) return null;
-    const formatted = formatLatexPreview(text);
-    
-    // If formatted is an object with __html, use dangerouslySetInnerHTML
-    if (typeof formatted === 'object' && formatted.__html) {
-      // Convert line breaks to <br> tags in the HTML
-      const htmlWithBreaks = formatted.__html.replace(/\n/g, '<br />');
-      return (
-        <span dangerouslySetInnerHTML={{__html: htmlWithBreaks}} />
-      );
-    }
-    
-    // Otherwise handle line breaks in plain text by splitting and rendering with <br>
-    const textWithBreaks = (formatted as string).split('\n');
-    return (
-      <span>
-        {textWithBreaks.map((line, index) => (
-          <React.Fragment key={index}>
-            {line}
-            {index < textWithBreaks.length - 1 && <br />}
-          </React.Fragment>
-        ))}
-      </span>
-    );
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -1111,10 +1009,10 @@ export default function AdminPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {selectedExamType} Question Types
             </h3>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {QUESTION_TYPES[selectedExamType as keyof typeof QUESTION_TYPES].map((questionType) => {
                 const breakdown = getQuestionTypeBreakdown(selectedExamType);
-                // Use questionType.id to match the actual question type values in the database
                 const typeData = breakdown[questionType.id] || { total: 0, subcategories: {} };
                 const isSelected = selectedQuestionType === questionType.id;
                 
@@ -1259,8 +1157,8 @@ export default function AdminPage() {
                                 <div className="font-medium text-gray-900 mb-2">Question:</div>
                                 <div className="text-gray-700 text-sm leading-relaxed">
                                   {question.text && question.text.length > 200 
-                                    ? <>{renderTextWithLatex(question.text.substring(0, 200))}...</>
-                                    : renderTextWithLatex(question.text || 'No question text available')
+                                    ? <>{formatLatexPreview(question.text.substring(0, 200))}...</>
+                                    : formatLatexPreview(question.text || 'No question text available')
                                   }
                                 </div>
                               </div>
@@ -1277,7 +1175,7 @@ export default function AdminPage() {
                                       <span className="font-medium mr-2">
                                         {String.fromCharCode(65 + choiceIndex)}.
                                       </span>
-                                      {renderTextWithLatex(choice)}
+                                      {formatLatexPreview(choice)}
                                       {choice === question.correctAnswer && (
                                         <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
                                       )}
@@ -1291,8 +1189,8 @@ export default function AdminPage() {
                                   <div className="font-medium text-gray-900 mb-1 text-sm">Explanation:</div>
                                   <div className="text-gray-600 text-sm">
                                     {question.explanation.length > 150 
-                                      ? <>{renderTextWithLatex(question.explanation.substring(0, 150))}...</>
-                                      : renderTextWithLatex(question.explanation)
+                                      ? <>{formatLatexPreview(question.explanation.substring(0, 150))}...</>
+                                      : formatLatexPreview(question.explanation)
                                     }
                                   </div>
                                 </div>
@@ -1394,9 +1292,9 @@ export default function AdminPage() {
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value as Subcategory)}
                 >
-                  {QUESTION_SUBCATEGORIES[type].map((sub) => (
+                  {QUESTION_SUBCATEGORIES[type.toLowerCase() as keyof typeof QUESTION_SUBCATEGORIES]?.map((sub) => (
                     <option key={sub} value={sub}>{sub}</option>
-                  ))}
+                  )) || []}
                 </select>
               </div>
 
@@ -1436,7 +1334,11 @@ export default function AdminPage() {
                   ))}
                 </div>
                 <p className="text-xs text-gray-800">
-                  <strong>Examples:</strong> x^2 → x², \sqrt{5} → √5, \frac{1}{2} → ½
+                  <strong>Examples:</strong> $x^2$ → x², $\sqrt{5}$ → √5, $\frac{1}{2}$ → ½
+                  <br />
+                  <strong>Format:</strong> Surround math with dollar signs: $math here$
+                  <br />
+                  <strong>Tip:</strong> Paste LaTeX code directly - it will be auto-wrapped in $...$
                 </p>
               </div>
 
@@ -1445,7 +1347,8 @@ export default function AdminPage() {
                 className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Enter your question here... Use LaTeX for math: x^2, \sqrt{5}, \frac{1}{2}"
+                onPaste={(e) => handlePaste(e, 'question')}
+                placeholder="Enter your question here... Use $...$ for math: $x^2$, $\sqrt{5}$, $\frac{1}{2}$"
                 required
               />
 
@@ -1454,7 +1357,7 @@ export default function AdminPage() {
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
                   <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
                   <div className="text-gray-900 font-medium">
-                    {renderTextWithLatex(text)}
+                    {formatLatexPreview(text)}
                   </div>
                 </div>
               )}
@@ -1498,6 +1401,7 @@ export default function AdminPage() {
                   className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
                   value={correctAnswer}
                   onChange={(e) => setCorrectAnswer(e.target.value)}
+                  onPaste={(e) => handlePaste(e, 'answer')}
                   placeholder="Enter the correct answer..."
                   required
                 />
@@ -1506,7 +1410,7 @@ export default function AdminPage() {
                 {correctAnswer && (
                   <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
                     <span className="text-xs text-green-700 font-medium">Preview: </span>
-                    <span className="text-green-800">{renderTextWithLatex(correctAnswer)}</span>
+                    <span className="text-green-800">{formatLatexPreview(correctAnswer)}</span>
                   </div>
                 )}
               </div>
@@ -1545,6 +1449,7 @@ export default function AdminPage() {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                         value={choice}
                         onChange={(e) => updateChoice(index + 1, e.target.value)}
+                        onPaste={(e) => handlePaste(e, 'choice', index)}
                         placeholder={`Choice ${index + 2}...`}
                         required
                       />
@@ -1553,7 +1458,7 @@ export default function AdminPage() {
                       {choice && (
                         <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
                           <span className="text-xs text-gray-700 font-medium">Preview: </span>
-                          <span className="text-gray-900 font-medium">{renderTextWithLatex(choice)}</span>
+                          <span className="text-gray-900 font-medium">{formatLatexPreview(choice)}</span>
                         </div>
                       )}
                     </div>
@@ -1596,6 +1501,7 @@ export default function AdminPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
+                onPaste={(e) => handlePaste(e, 'explanation')}
                 placeholder="Enter an explanation for the answer..."
               />
               
@@ -1604,7 +1510,7 @@ export default function AdminPage() {
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
                   <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
                   <div className="text-gray-900 font-medium">
-                    {renderTextWithLatex(explanation)}
+                    {formatLatexPreview(explanation)}
                   </div>
                 </div>
               )}
@@ -1872,7 +1778,7 @@ export default function AdminPage() {
                     <div>
                       <h4 className="font-medium text-alarm-black mb-1">Question:</h4>
                       <p className="text-gray-900 bg-gray-50 p-3 rounded-lg font-medium">
-                        {renderTextWithLatex(q.text)}
+                        {formatLatexPreview(q.text)}
                       </p>
                     </div>
 
@@ -1881,7 +1787,7 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {q.choices.map((choice, index) => (
                           <div key={index} className={`p-2 rounded-lg border font-medium ${index === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
-                            <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {renderTextWithLatex(choice)}
+                            <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {formatLatexPreview(choice)}
                             {index === 0 && <span className="ml-2 text-xs font-medium">✓ Correct</span>}
                           </div>
                         ))}
@@ -1892,7 +1798,7 @@ export default function AdminPage() {
                       <div>
                         <h4 className="font-medium text-alarm-black mb-1">Explanation:</h4>
                         <p className="text-gray-800 bg-alarm-blue-light/20 p-3 rounded-lg text-sm font-medium">
-                          {renderTextWithLatex(q.explanation)}
+                          {formatLatexPreview(q.explanation)}
                         </p>
                       </div>
                     )}
@@ -2072,7 +1978,101 @@ function EditQuestionForm({
     setSubcategory(QUESTION_SUBCATEGORIES[newType as keyof typeof QUESTION_SUBCATEGORIES][0]);
   };
 
-  // Insert LaTeX symbol at cursor position for edit form
+  // Auto-wrap LaTeX content function for edit form
+  const autoWrapLatex = (text: string): string => {
+    let result = text;
+    
+    // First, convert \( and \) delimiters to $ delimiters
+    result = result.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+    
+    // Convert \[ and \] delimiters to $$ delimiters for display math
+    result = result.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+    
+    // Common LaTeX patterns that need wrapping
+    const latexPatterns = [
+      /\\frac\{[^}]*\}\{[^}]*\}/g,           // \frac{}{} 
+      /\\sqrt\{[^}]*\}/g,                    // \sqrt{}
+      /\\[a-zA-Z]+\{[^}]*\}/g,              // Other LaTeX commands with braces
+      /\\[a-zA-Z]+/g,                       // LaTeX commands without braces
+      /\^[a-zA-Z0-9\{\}]+/g,                // Superscripts
+      /_[a-zA-Z0-9\{\}]+/g,                 // Subscripts
+    ];
+    
+    // Check if the text contains LaTeX patterns
+    const hasLatex = latexPatterns.some(pattern => pattern.test(result));
+    
+    if (hasLatex) {
+      // Split text by existing $ delimiters to avoid double-wrapping
+      const parts = result.split(/(\$[^$]*\$|\$\$[^$]*\$\$)/);
+      
+      result = parts.map(part => {
+        // If part is already wrapped in $...$ or $$...$$ or is just plain text, leave it
+        if ((part.startsWith('$') && part.endsWith('$')) || 
+            (part.startsWith('$$') && part.endsWith('$$'))) {
+          return part;
+        }
+        
+        // Check if this part contains LaTeX patterns
+        const partHasLatex = latexPatterns.some(pattern => pattern.test(part));
+        
+        if (partHasLatex) {
+          // Split by whitespace to wrap individual expressions
+          return part.split(/(\s+)/).map(segment => {
+            if (segment.trim() && latexPatterns.some(pattern => pattern.test(segment))) {
+              return `$${segment}$`;
+            }
+            return segment;
+          }).join('');
+        }
+        
+        return part;
+      }).join('');
+    }
+    
+    return result;
+  };
+
+  // Handle paste events to auto-wrap LaTeX for edit form
+  const handlePasteEdit = (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
+    e.preventDefault();
+    
+    const pastedText = e.clipboardData.getData('text');
+    const wrappedText = autoWrapLatex(pastedText);
+    
+    const textarea = e.target as HTMLTextAreaElement | HTMLInputElement;
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const currentValue = textarea.value;
+    
+    const newValue = currentValue.substring(0, start) + wrappedText + currentValue.substring(end);
+    
+    // Update the appropriate state
+    switch (target) {
+      case 'question':
+        setText(newValue);
+        break;
+      case 'answer':
+        setCorrectAnswer(newValue);
+        break;
+      case 'explanation':
+        setExplanation(newValue);
+        break;
+      case 'choice':
+        if (choiceIndex !== undefined) {
+          updateChoice(choiceIndex, newValue);
+        }
+        break;
+    }
+    
+    // Set cursor position after the pasted content
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + wrappedText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 10);
+  };
+
+  // Insert LaTeX symbol at cursor position for edit form - wraps in $...$ for KaTeX
   const insertLatexSymbolEdit = (latex: string, target: 'question' | 'answer' | 'choice' | 'explanation', choiceIndex?: number) => {
     let textarea: HTMLTextAreaElement | HTMLInputElement | null = null;
     
@@ -2087,17 +2087,19 @@ function EditQuestionForm({
       const end = textarea.selectionEnd || 0;
       const currentValue = textarea.value;
       
+      // Wrap LaTeX in $...$ for KaTeX rendering
+      const wrappedLatex = `$${latex}$`;
       let newValue: string;
       let newCursorPos: number;
       
       if (latex.includes('{}')) {
         // For symbols with placeholders like \sqrt{}, \frac{}{}
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.indexOf('{}');
+        newValue = currentValue.substring(0, start) + wrappedLatex + currentValue.substring(end);
+        newCursorPos = start + wrappedLatex.indexOf('{}');
       } else {
         // For simple symbols
-        newValue = currentValue.substring(0, start) + latex + currentValue.substring(end);
-        newCursorPos = start + latex.length;
+        newValue = currentValue.substring(0, start) + wrappedLatex + currentValue.substring(end);
+        newCursorPos = start + wrappedLatex.length;
       }
       
       // Update the appropriate state
@@ -2152,20 +2154,6 @@ function EditQuestionForm({
     setChoices(newChoices);
   };
 
-  // Helper function to render text with LaTeX support
-  const renderTextWithLatex = (text: string) => {
-    if (!text) return '';
-    const formatted = formatLatexPreview(text);
-    
-    // If formatted is an object with __html, use dangerouslySetInnerHTML
-    if (typeof formatted === 'object' && formatted.__html) {
-      return <span dangerouslySetInnerHTML={formatted} />;
-    }
-    
-    // Otherwise return plain text
-    return text;
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Enhanced form fields matching the add question form */}
@@ -2206,9 +2194,9 @@ function EditQuestionForm({
             value={subcategory}
             onChange={(e) => setSubcategory(e.target.value as Subcategory)}
           >
-            {QUESTION_SUBCATEGORIES[type as keyof typeof QUESTION_SUBCATEGORIES].map((sub) => (
+            {QUESTION_SUBCATEGORIES[type.toLowerCase() as keyof typeof QUESTION_SUBCATEGORIES]?.map((sub) => (
               <option key={sub} value={sub}>{sub}</option>
-            ))}
+            )) || []}
           </select>
         </div>
 
@@ -2248,7 +2236,11 @@ function EditQuestionForm({
             ))}
           </div>
           <p className="text-xs text-gray-800">
-            <strong>Examples:</strong> x^2 → x², \sqrt{5} → √5, \frac{1}{2} → ½
+            <strong>Examples:</strong> $x^2$ → x², $\sqrt{5}$ → √5, $\frac{1}{2}$ → ½
+            <br />
+            <strong>Format:</strong> Surround math with dollar signs: $math here$
+            <br />
+            <strong>Tip:</strong> Paste LaTeX code directly - it will be auto-wrapped in $...$
           </p>
         </div>
 
@@ -2257,7 +2249,8 @@ function EditQuestionForm({
           className="w-full border-2 border-gray-400 rounded-lg px-3 py-2 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Enter your question here... Use LaTeX for math: x^2, \sqrt{5}, \frac{1}{2}"
+          onPaste={(e) => handlePasteEdit(e, 'question')}
+          placeholder="Enter your question here... Use $...$ for math: $x^2$, $\sqrt{5}$, $\frac{1}{2}$"
           required
         />
 
@@ -2266,7 +2259,7 @@ function EditQuestionForm({
           <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
             <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
             <div className="text-gray-900 font-medium">
-              {renderTextWithLatex(text)}
+              {formatLatexPreview(text)}
             </div>
           </div>
         )}
@@ -2310,6 +2303,7 @@ function EditQuestionForm({
             className="w-full border-2 border-green-300 rounded-lg px-3 py-2 bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500 text-alarm-black"
             value={correctAnswer}
             onChange={(e) => setCorrectAnswer(e.target.value)}
+            onPaste={(e) => handlePasteEdit(e, 'answer')}
             placeholder="Enter the correct answer..."
             required
           />
@@ -2318,7 +2312,7 @@ function EditQuestionForm({
           {correctAnswer && (
             <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
               <span className="text-xs text-green-700 font-medium">Preview: </span>
-              <span className="text-green-800">{renderTextWithLatex(correctAnswer)}</span>
+              <span className="text-green-800">{formatLatexPreview(correctAnswer)}</span>
             </div>
           )}
         </div>
@@ -2357,6 +2351,7 @@ function EditQuestionForm({
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
                   value={choice}
                   onChange={(e) => updateChoice(index, e.target.value)}
+                  onPaste={(e) => handlePasteEdit(e, 'choice', index)}
                   placeholder={`Choice ${String.fromCharCode(66 + index)}...`}
                   required
                 />
@@ -2365,7 +2360,7 @@ function EditQuestionForm({
                 {choice && (
                   <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
                     <span className="text-xs text-gray-700 font-medium">Preview: </span>
-                    <span className="text-gray-900 font-medium">{renderTextWithLatex(choice)}</span>
+                    <span className="text-gray-900 font-medium">{formatLatexPreview(choice)}</span>
                   </div>
                 )}
               </div>
@@ -2408,6 +2403,7 @@ function EditQuestionForm({
           className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 resize-none focus:ring-2 focus:ring-alarm-blue focus:border-alarm-blue text-alarm-black"
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
+          onPaste={(e) => handlePasteEdit(e, 'explanation')}
           placeholder="Enter an explanation for the answer..."
         />
         
@@ -2416,7 +2412,7 @@ function EditQuestionForm({
           <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
             <h4 className="text-sm font-medium text-alarm-black mb-2">Preview:</h4>
             <div className="text-gray-900 font-medium">
-              {renderTextWithLatex(explanation)}
+              {formatLatexPreview(explanation)}
             </div>
           </div>
         )}
