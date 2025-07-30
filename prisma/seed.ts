@@ -5,15 +5,24 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database...')
 
-  // Clear existing data
-  await prisma.question.deleteMany()
+  // Check if database already has questions
+  const existingCount = await prisma.question.count()
+  if (existingCount > 0) {
+    console.log(`Database already contains ${existingCount} questions. Skipping seed to preserve existing data.`)
+    console.log('To force reseed, manually delete questions first.')
+    console.log('⚠️  WARNING: This seed script will NEVER automatically delete your questions!')
+    return
+  }
+
+  // Only seed if database is empty
+  console.log('Database is empty. Adding initial questions...')
 
   // GMAT Questions
   const gmatQuestions = [
     {
       exam: 'GMAT',
-      type: 'Quantitative',
-      subcategory: 'Problem Solving',
+      type: 'quantitative',
+      subcategory: 'Linear and Quadratic Equations',
       text: 'If $3x + 5 = 20$, what is the value of $x$?',
       correctAnswer: '$x = 5$',
       choices: ['$x = 3$', '$x = 4$', '$x = 5$', '$x = 6$'],
@@ -22,8 +31,8 @@ async function main() {
     },
     {
       exam: 'GMAT',
-      type: 'Quantitative',
-      subcategory: 'Problem Solving',
+      type: 'quantitative',
+      subcategory: 'Linear and Quadratic Equations',
       text: 'What is the value of $x^2 + 2x - 8$ when $x = 3$?',
       correctAnswer: '$7$',
       choices: ['$5$', '$7$', '$9$', '$11$'],
@@ -32,8 +41,8 @@ async function main() {
     },
     {
       exam: 'GMAT',
-      type: 'Quantitative',
-      subcategory: 'Algebra',
+      type: 'quantitative',
+      subcategory: 'Linear and Quadratic Equations',
       text: 'If $\\frac{x^2 - 4}{x + 2} = 5$, what is the value of $x$?',
       correctAnswer: '$x = 7$',
       choices: ['$x = 5$', '$x = 6$', '$x = 7$', '$x = 8$'],
@@ -42,8 +51,8 @@ async function main() {
     },
     {
       exam: 'GMAT',
-      type: 'Verbal',
-      subcategory: 'Critical Reasoning',
+      type: 'verbal',
+      subcategory: 'Main Idea',
       text: 'The city council has proposed a new ordinance requiring all restaurants to post calorie counts. This will help reduce obesity rates. Which of the following, if true, would most weaken this argument?',
       correctAnswer: 'Studies show that calorie posting has no significant effect on customer ordering behavior',
       choices: [
@@ -61,7 +70,7 @@ async function main() {
   const lsatQuestions = [
     {
       exam: 'LSAT',
-      type: 'Logical Reasoning',
+      type: 'logical',
       subcategory: 'Strengthen',
       text: 'The new highway will reduce traffic congestion in downtown. Therefore, air pollution in the city center will decrease. Which of the following, if true, would most strengthen this argument?',
       correctAnswer: 'Most air pollution in the city center comes from vehicle emissions',
@@ -76,8 +85,8 @@ async function main() {
     },
     {
       exam: 'LSAT',
-      type: 'Logic Games',
-      subcategory: 'Analytical Reasoning',
+      type: 'logical',
+      subcategory: 'Strengthen',
       text: 'In a sequence, the formula is $a_n = 2^n + 3$. What is the value of $a_4$?',
       correctAnswer: '$a_4 = 19$',
       choices: ['$a_4 = 15$', '$a_4 = 17$', '$a_4 = 19$', '$a_4 = 21$'],
@@ -86,7 +95,7 @@ async function main() {
     },
     {
       exam: 'LSAT',
-      type: 'Reading Comprehension',
+      type: 'reading',
       subcategory: 'Main Point',
       text: 'Recent studies have shown that meditation can improve focus and reduce stress. Companies are beginning to offer meditation programs to employees. What is the main point of this passage?',
       correctAnswer: 'Companies are implementing meditation programs based on research showing its benefits',
@@ -108,7 +117,8 @@ async function main() {
     })
   }
 
-  console.log('Database seeded successfully!')
+  const finalCount = await prisma.question.count()
+  console.log(`Database seeded successfully! Added ${finalCount} initial questions.`)
 }
 
 main()

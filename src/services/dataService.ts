@@ -27,11 +27,11 @@ class DataService {
   // Map UI question type IDs to database values
   private mapQuestionType(uiType: string): string {
     const typeMap: { [key: string]: string } = {
-      'quantitative': 'Quantitative',
-      'verbal': 'Verbal', 
-      'data': 'Data Insights',
-      'logical': 'Logical Reasoning',
-      'reading': 'Reading Comprehension'
+      'quantitative': 'quantitative',
+      'verbal': 'verbal', 
+      'data': 'data',
+      'logical': 'logical',
+      'reading': 'reading'
     };
     const mapped = typeMap[uiType.toLowerCase()] || uiType;
     console.log('Type mapping:', uiType, '→', mapped);
@@ -173,7 +173,7 @@ class DataService {
         id: 1,
         exam: 'GMAT',
         type: 'quantitative',
-        subcategory: 'Problem Solving',
+        subcategory: 'Linear and Quadratic Equations',
         text: 'If $3x + 5 = 20$, what is the value of $x$?',
         correctAnswer: '$x = 5$',
         choices: ['$x = 3$', '$x = 4$', '$x = 5$', '$x = 6$'],
@@ -183,13 +183,13 @@ class DataService {
       {
         id: 2,
         exam: 'GMAT',
-        type: 'quantitative',
-        subcategory: 'Problem Solving',
-        text: 'What is the value of $x^2 + 2x - 8$ when $x = 3$?',
-        correctAnswer: '$7$',
-        choices: ['$5$', '$7$', '$9$', '$11$'],
-        difficulty: 'easy',
-        explanation: 'Substitute $x = 3$: $(3)^2 + 2(3) - 8 = 9 + 6 - 8 = 7$'
+        type: 'verbal',
+        subcategory: 'Main Idea',
+        text: 'The main purpose of this passage is to:',
+        correctAnswer: 'Explain a scientific discovery',
+        choices: ['Explain a scientific discovery', 'Argue for policy change', 'Describe a historical event', 'Compare different theories'],
+        difficulty: 'medium',
+        explanation: 'The passage focuses on explaining recent scientific findings.'
       },
       {
         id: 3,

@@ -592,19 +592,6 @@ export default function AdminPage() {
   const getQuestionTypeBreakdown = (examType: string) => {
     const examQuestions = questions.filter(q => q.exam === examType);
     
-    // Debug logging
-    console.log('=== DEBUG getQuestionTypeBreakdown ===');
-    console.log('examType:', examType);
-    console.log('total questions:', questions.length);
-    console.log('examQuestions length:', examQuestions.length);
-    if (examQuestions.length > 0) {
-      console.log('sample examQuestions:', examQuestions.slice(0, 3).map(q => ({
-        exam: q.exam,
-        type: q.type,
-        subcategory: q.subcategory
-      })));
-    }
-    
     const breakdown = examQuestions.reduce((acc, q) => {
       // Normalize type to lowercase to match UI expectations
       const type = q.type.toLowerCase();
@@ -621,10 +608,6 @@ export default function AdminPage() {
       
       return acc;
     }, {} as Record<string, { total: number; subcategories: Record<string, number> }>);
-    
-    console.log('breakdown result:', breakdown);
-    console.log('breakdown keys:', Object.keys(breakdown));
-    console.log('=== END DEBUG ===');
     
     return breakdown;
   };
@@ -1168,21 +1151,25 @@ export default function AdminPage() {
                               <div className="mb-3">
                                 <div className="font-medium text-gray-900 mb-2">Answer Choices:</div>
                                 <div className="space-y-1">
-                                  {question.choices && question.choices.map((choice, choiceIndex) => (
-                                    <div key={choiceIndex} className={`text-sm p-2 rounded ${
-                                      choice === question.correctAnswer 
-                                        ? 'bg-green-50 border border-green-200 text-green-800' 
-                                        : 'bg-gray-50 text-gray-700'
-                                    }`}>
-                                      <span className="font-medium mr-2">
-                                        {String.fromCharCode(65 + choiceIndex)}.
-                                      </span>
-                                      {formatLatexPreview(choice)}
-                                      {choice === question.correctAnswer && (
-                                        <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
-                                      )}
-                                    </div>
-                                  ))}
+                                  {question.choices && question.choices.map((choice, choiceIndex) => {
+                                    const isCorrect = choice === question.correctAnswer;
+                                    
+                                    return (
+                                      <div key={choiceIndex} className={`text-sm p-2 rounded ${
+                                        isCorrect
+                                          ? 'bg-green-50 border border-green-200 text-green-800' 
+                                          : 'bg-gray-50 text-gray-700'
+                                      }`}>
+                                        <span className="font-medium mr-2">
+                                          {String.fromCharCode(65 + choiceIndex)}.
+                                        </span>
+                                        {formatLatexPreview(choice)}
+                                        {isCorrect && (
+                                          <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                               
@@ -1767,12 +1754,15 @@ export default function AdminPage() {
                     <div>
                       <h4 className="font-medium text-alarm-black mb-2">Answer Choices:</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {q.choices.map((choice, index) => (
-                          <div key={index} className={`p-2 rounded-lg border font-medium ${index === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
-                            <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {formatLatexPreview(choice)}
-                            {index === 0 && <span className="ml-2 text-xs font-medium">✓ Correct</span>}
-                          </div>
-                        ))}
+                        {q.choices.map((choice, index) => {
+                          const isCorrect = choice === q.correctAnswer;
+                          return (
+                            <div key={index} className={`p-2 rounded-lg border font-medium ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+                              <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {formatLatexPreview(choice)}
+                              {isCorrect && <span className="ml-2 text-xs font-medium">✓ Correct</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2116,14 +2106,14 @@ function EditQuestionForm({
     }
     
     // Validate a correct answer is selected
-    if (correctAnswerIndex === null) {
+    if (correctAnswerIndex === null || correctAnswerIndex < 0) {
       alert("Please select which choice is the correct answer");
       return;
     }
     
     setLoading(true);
     try {
-      await onSave({
+      const updatedQuestion = {
         ...question,
         text,
         correctAnswer: choices[correctAnswerIndex].trim(),
@@ -2133,7 +2123,9 @@ function EditQuestionForm({
         type,
         subcategory,
         difficulty
-      });
+      };
+      
+      await onSave(updatedQuestion);
     } finally {
       setLoading(false);
     }
@@ -2141,8 +2133,15 @@ function EditQuestionForm({
 
   const updateChoice = (index: number, value: string) => {
     const newChoices = [...choices];
+    const oldChoice = newChoices[index];
     newChoices[index] = value;
     setChoices(newChoices);
+    
+    // If the choice being updated was the correct answer, update the correct answer tracking
+    if (correctAnswerIndex === index) {
+      // The correctAnswerIndex is still valid, it will point to the new value
+      // This ensures choices[correctAnswerIndex] matches what should be the correct answer
+    }
   };
 
   return (

@@ -14,7 +14,7 @@ model Question {
   subcategory   String
   text          String
   correctAnswer String
-  choices       String[]
+  choices       String[] @db.Text
   difficulty    String   @default("easy")
   explanation   String?
   createdAt     DateTime @default(now())
